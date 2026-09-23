@@ -1,0 +1,214 @@
+{
+ "name": "Mackay Software",
+ "version": 1,
+ "color": {
+  "themes": [
+   {
+    "id": "light",
+    "name": "Light"
+   },
+   {
+    "id": "dark",
+    "name": "Dark"
+   }
+  ],
+  "tokens": [
+   {
+    "name": "paper",
+    "value": {
+     "light": "#FFFFFF",
+     "dark": "#111111"
+    },
+    "usage": "Page and document background. Invoices always print on light paper."
+   },
+   {
+    "name": "paper-sunken",
+    "value": {
+     "light": "#F4F4F2",
+     "dark": "#1B1B1A"
+    },
+    "usage": "Table header rows, totals band, code blocks."
+   },
+   {
+    "name": "line",
+    "value": {
+     "light": "#E2E2DF",
+     "dark": "#333331"
+    },
+    "usage": "Hairline rules between table rows and sections. Borders, never shadows."
+   },
+   {
+    "name": "ink",
+    "value": {
+     "light": "#111111",
+     "dark": "#F2F2F0"
+    },
+    "usage": "Primary text on paper and paper-sunken."
+   },
+   {
+    "name": "ink-muted",
+    "value": {
+     "light": "#6B6B68",
+     "dark": "#9A9A96"
+    },
+    "usage": "Labels, metadata, secondary text on paper and paper-sunken (4.8:1+)."
+   },
+   {
+    "name": "signal",
+    "value": {
+     "light": "#C8341B",
+     "dark": "#FF7A5C"
+    },
+    "usage": "The one accent: the logo's cursor, amount due, links. Text on paper, paper-sunken or signal-soft (4.5:1+). Use sparingly — once or twice per page."
+   },
+   {
+    "name": "signal-soft",
+    "value": {
+     "light": "#FBEAE6",
+     "dark": "#3A1710"
+    },
+    "usage": "Tinted background behind signal text, e.g. an 'Overdue' badge."
+   },
+   {
+    "name": "on-signal",
+    "value": {
+     "light": "#FFFFFF",
+     "dark": "#111111"
+    },
+    "usage": "Text on a signal fill."
+   }
+  ]
+ },
+ "type": {
+  "fonts": [],
+  "families": {
+   "mono": "\"JetBrains Mono\", ui-monospace, \"SF Mono\", Menlo, monospace"
+  },
+  "groups": [
+   {
+    "name": "Text",
+    "family": "mono",
+    "note": "JetBrains Mono throughout — one family, set by weight and case.",
+    "styles": [
+     {
+      "name": "wordmark",
+      "fontSize": "22px",
+      "lineHeight": "28px",
+      "fontWeight": 600,
+      "letterSpacing": "0.02em",
+      "sample": "MACKAY SOFTWARE",
+      "usage": "The company name, always uppercase, with word-spacing: -0.44em so the gap matches the logo. Prefer the logo files."
+     },
+     {
+      "name": "display",
+      "fontSize": "30px",
+      "lineHeight": "36px",
+      "fontWeight": 600,
+      "letterSpacing": "-0.02em",
+      "sample": "Invoice",
+      "usage": "Document title only."
+     },
+     {
+      "name": "heading",
+      "fontSize": "17px",
+      "lineHeight": "24px",
+      "fontWeight": 600,
+      "sample": "Services rendered",
+      "usage": "Section headings."
+     },
+     {
+      "name": "body",
+      "fontSize": "13px",
+      "lineHeight": "20px",
+      "fontWeight": 400,
+      "sample": "Backend development — API migration",
+      "usage": "Line items, letters, notes."
+     },
+     {
+      "name": "small",
+      "fontSize": "11px",
+      "lineHeight": "16px",
+      "fontWeight": 400,
+      "sample": "Company no. and VAT details",
+      "usage": "Footers, legal lines, in ink-muted."
+     }
+    ]
+   },
+   {
+    "name": "Data",
+    "family": "mono",
+    "note": "Figures align in columns by default.",
+    "styles": [
+     {
+      "name": "label",
+      "fontSize": "11px",
+      "lineHeight": "16px",
+      "fontWeight": 500,
+      "letterSpacing": "0.08em",
+      "sample": "INVOICE NO.",
+      "usage": "Uppercase field labels, in ink-muted."
+     },
+     {
+      "name": "figure",
+      "fontSize": "13px",
+      "lineHeight": "20px",
+      "fontWeight": 400,
+      "sample": "£4,250.00",
+      "usage": "Amounts, dates, quantities; right-aligned in tables."
+     },
+     {
+      "name": "total",
+      "fontSize": "24px",
+      "lineHeight": "32px",
+      "fontWeight": 700,
+      "sample": "£4,250.00",
+      "usage": "Amount due, in signal."
+     }
+    ]
+   }
+  ]
+ },
+ "spacing": {
+  "tokens": [
+   {
+    "name": "space-1",
+    "value": "4px",
+    "usage": "Base unit; gap between label and value."
+   },
+   {
+    "name": "space-2",
+    "value": "8px",
+    "usage": "Table cell vertical padding."
+   },
+   {
+    "name": "space-4",
+    "value": "16px",
+    "usage": "Cell horizontal padding, gaps between blocks."
+   },
+   {
+    "name": "space-8",
+    "value": "32px",
+    "usage": "Section spacing; document margins on screen (print: 20mm)."
+   }
+  ]
+ },
+ "radius": {
+  "tokens": [
+   {
+    "name": "radius-none",
+    "value": "0px",
+    "usage": "Default: tables, documents, blocks."
+   },
+   {
+    "name": "radius-sm",
+    "value": "2px",
+    "usage": "Badges and inputs."
+   },
+   {
+    "name": "radius-md",
+    "value": "4px",
+    "usage": "Buttons, the largest radius used."
+   }
+  ]
+ }
+}

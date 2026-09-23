@@ -1,0 +1,16 @@
+{
+  "number": "MS-0042",
+  "issueDate": "2026-09-19",
+  "dueDate": "2026-10-19",
+  "vat": true,
+  "unit": "days",
+  "client": {
+    "name": "Example Client Ltd",
+    "contact": "Accounts Payable",
+    "address": ["1 Example Street", "London, EC1A 1AA"]
+  },
+  "lineItems": [
+    { "description": "Backend development", "detail": "Sprint 14 · 1–12 Sep 2026", "quantity": 10, "rate": 550 },
+    { "description": "Code review & handover", "quantity": 1, "rate": 825 }
+  ]
+}

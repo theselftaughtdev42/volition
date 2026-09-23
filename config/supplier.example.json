@@ -1,0 +1,16 @@
+{
+  "name": "Mackay Software",
+  "legalName": "Mackay Software Limited",
+  "address": [
+    "Mansion House, Manchester Rd",
+    "Altrincham, Cheshire",
+    "WA14 4RW"
+  ],
+  "website": "www.mackaysoftware.com",
+  "email": "tim@mackaysoftware.com",
+  "companyNumber": "15289765",
+  "registeredIn": "England & Wales",
+  "vatNumber": "GB 459 3303 82",
+  "paymentTermsDays": 30,
+  "bank": { "accountName": "Mackay Software Limited", "sortCode": "00-00-00", "accountNumber": "00000000" }
+}

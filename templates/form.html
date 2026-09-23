@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volition - Invoice Generator</title>
+<link rel="icon" href="/assets/ms-mark.svg">
+<style>
+  @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("/assets/fonts/JetBrainsMono-Medium.ttf") format("truetype"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 600; src: url("/assets/fonts/JetBrainsMono-SemiBold.ttf") format("truetype"); }
+
+  :root {
+    --paper: #FFFFFF; --paper-sunken: #F4F4F2; --line: #E2E2DF;
+    --ink: #111111; --ink-muted: #6B6B68; --signal: #C8341B; --signal-soft: #FBEAE6; --on-signal: #FFFFFF;
+    --space-1: 4px; --space-2: 8px; --space-4: 16px; --space-8: 32px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #111111; --paper-sunken: #1B1B1A; --line: #333331;
+      --ink: #F2F2F0; --ink-muted: #9A9A96; --signal: #FF7A5C; --signal-soft: #3A1710; --on-signal: #111111;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 13px/20px "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  main { max-width: 800px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4);
+    padding-bottom: var(--space-4); border-bottom: 1px solid var(--ink); }
+  h1 { margin: 0; font-size: 17px; line-height: 24px; font-weight: 600; }
+
+  fieldset { border: 0; margin: var(--space-8) 0 0; padding: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: var(--space-4); }
+  .label, legend { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4); }
+  .wide { grid-column: 1 / -1; }
+  label { display: flex; flex-direction: column; gap: var(--space-1); }
+  .hint { font-size: 11px; line-height: 16px; color: var(--ink-muted); }
+
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input, select, textarea { width: 100%; padding: 6px var(--space-2); background: var(--paper);
+    border: 1px solid var(--line); border-radius: 2px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outline-offset: -1px; border-color: var(--ink); }
+  input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
+  textarea { resize: vertical; }
+  label.check { flex-direction: row; align-items: center; gap: var(--space-2); align-self: end;
+    min-height: 34px; cursor: pointer; }
+  input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
+  .prefixed { display: flex; align-items: center; gap: var(--space-2); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--paper-sunken); border-bottom: 1px solid var(--ink); padding: var(--space-2);
+    text-align: left; }
+  th.num { text-align: right; }
+  td { padding: var(--space-2) var(--space-2) var(--space-2) 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { padding-left: 0; }
+  .stack { display: flex; flex-direction: column; gap: var(--space-1); }
+  .col-qty { width: 96px; } .col-rate { width: 120px; } .col-x { width: 32px; }
+
+  button { cursor: pointer; border-radius: 4px; border: 1px solid var(--line); background: var(--paper);
+    padding: 6px var(--space-4); }
+  button:hover { border-color: var(--ink); }
+  button.remove { padding: 6px 0; width: 32px; color: var(--ink-muted); }
+  button.add { margin-top: var(--space-4); }
+  button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
+  button.primary:disabled { opacity: .6; cursor: progress; }
+
+  .actions { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+    margin-top: var(--space-8); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+  .status:empty { display: none; }
+  .errors { margin: var(--space-4) 0 0; padding: var(--space-4); padding-left: var(--space-8);
+    background: var(--signal-soft); color: var(--signal); }
+  .errors:empty { display: none; }
+  a { color: inherit; }
+
+  @media (max-width: 600px) {
+    thead { display: none; }
+    tr { display: grid; grid-template-columns: 1fr 1fr 32px; gap: var(--space-2); padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--line); }
+    td, td.col-qty, td.col-rate { display: block; width: auto; padding: 0; border: 0; }
+    td.col-desc { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Volition - Invoice Generator</h1>
+    <span class="label">{{ supplier.legalName }}</span>
+  </header>
+
+  <form id="invoice" method="post" action="/invoice">
+    <fieldset>
+      <legend>Invoice</legend>
+      <div class="grid">
+        <label><span class="label">Number</span>
+          <span class="prefixed">MS- <input name="number" type="number" min="1" step="1" required value="{{ values.number }}"></span>
+          <span class="hint">Next in sequence: {{ values.numberFormatted }}</span>
+        </label>
+        <label><span class="label">Issue date</span>
+          <input name="issueDate" type="date" required value="{{ values.issueDate }}">
+        </label>
+        <label><span class="label">Due date</span>
+          <input name="dueDate" type="date">
+          <span class="hint">Blank = issue date + {{ supplier.paymentTermsDays }} days</span>
+        </label>
+        <label><span class="label">Period from</span>
+          <input name="periodStart" type="date" value="{{ values.periodStart }}">
+        </label>
+        <label><span class="label">Period to</span>
+          <input name="periodEnd" type="date" value="{{ values.periodEnd }}">
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Bill to</legend>
+      <div class="grid">
+        <label><span class="label">Name</span>
+          <input name="clientName" required value="{{ values.client.name }}">
+        </label>
+        <label><span class="label">Contact</span>
+          <input name="clientContact" value="{{ values.client.contact }}">
+        </label>
+        <label><span class="label">Email</span>
+          <input name="clientEmail" type="email" value="{{ values.client.email }}">
+        </label>
+        <label class="wide"><span class="label">Address</span>
+          <textarea name="clientAddress" rows="3" required>{{ values.client.address }}</textarea>
+          <span class="hint">One line per row</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Lines</legend>
+      <div class="grid" style="margin-bottom: var(--space-4)">
+        <label><span class="label">Unit</span>
+          <select name="unit">
+            <option value="days" {% if values.unit == "days" %}selected{% endif %}>Days</option>
+            <option value="hours" {% if values.unit == "hours" %}selected{% endif %}>Hours</option>
+            <option value="items" {% if values.unit == "items" %}selected{% endif %}>Items</option>
+          </select>
+        </label>
+        <label class="check">
+          <input name="vat" type="checkbox" {% if values.vat %}checked{% endif %}>
+          <span>Charge VAT ({{ vatPercent }}%)</span>
+        </label>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="label">Description / detail</th>
+            <th class="label num col-qty">Qty</th>
+            <th class="label num col-rate">Rate £</th>
+            <th class="col-x"></th>
+          </tr>
+        </thead>
+        <tbody id="lines">
+          {% for item in values.lineItems %}
+          <tr>
+            <td class="col-desc"><div class="stack">
+              <input name="description" value="{{ item.description }}" placeholder="Description" aria-label="Description">
+              <input name="detail" value="{{ item.detail }}" placeholder="Detail (optional)" aria-label="Detail">
+            </div></td>
+            <td class="col-qty"><input name="quantity" type="number" min="1" step="1" value="{{ item.quantity }}" placeholder="Qty" aria-label="Quantity"></td>
+            <td class="col-rate"><input name="rate" type="number" min="0" step="1" value="{{ item.rate }}" placeholder="Rate" aria-label="Rate"></td>
+            <td class="col-x"><button type="button" class="remove" aria-label="Remove line">×</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="add" id="add-line">+ Add line</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <label>
+        <textarea name="notes" rows="2" placeholder="Blank = no notes section" aria-label="Notes">{{ values.notes }}</textarea>
+      </label>
+    </fieldset>
+
+    <ul class="errors" id="errors" role="alert"></ul>
+
+    <div class="actions">
+      <button type="submit" class="primary">Generate PDF</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+  </form>
+</main>
+
+<script>
+  const form = document.getElementById("invoice");
+  const lines = document.getElementById("lines");
+  const errors = document.getElementById("errors");
+  const status = document.getElementById("status");
+  const submit = form.querySelector("button[type=submit]");
+
+  // New rows copy the first row with its values cleared, except the rate.
+  document.getElementById("add-line").addEventListener("click", () => {
+    const row = lines.rows[0].cloneNode(true);
+    for (const input of row.querySelectorAll("input:not([name=rate])")) input.value = "";
+    lines.append(row);
+    row.querySelector("input").focus();
+  });
+
+  lines.addEventListener("click", (e) => {
+    const button = e.target.closest("button.remove");
+    if (!button) return;
+    const row = button.closest("tr");
+    if (lines.rows.length > 1) row.remove();
+    else for (const input of row.querySelectorAll("input")) input.value = "";
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errors.replaceChildren();
+    status.textContent = "Generating…";
+    submit.disabled = true;
+    try {
+      const res = await fetch(form.action, { method: "POST", body: new FormData(form) });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ errors: [`Server error (${res.status})`] }));
+        errors.replaceChildren(...body.errors.map((msg) => Object.assign(document.createElement("li"), { textContent: msg })));
+        status.textContent = "";
+        return;
+      }
+      const filename = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "invoice.pdf";
+      const url = URL.createObjectURL(await res.blob());
+      Object.assign(document.createElement("a"), { href: url, download: filename }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      status.innerHTML = "";
+      status.append(`Downloaded ${filename}. `,
+        Object.assign(document.createElement("a"), { href: "/", textContent: "Start the next invoice" }));
+    } catch (err) {
+      status.textContent = "";
+      errors.replaceChildren(Object.assign(document.createElement("li"), { textContent: String(err) }));
+    } finally {
+      submit.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

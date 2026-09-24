@@ -26,6 +26,8 @@ make docker.build && make docker.run    # mounts ./config read-only and ./data
 
 Pushing a `v*` tag publishes `ghcr.io/theselftaughtdev42/volition` (see `.github/workflows/publish.yml`). `GET /health` backs the container healthcheck.
 
+To cut a release, run `make release BUMP=patch` (or `minor`/`major`, or `V=1.2.3`) from a clean `main` that matches `origin/main`. It runs lint and tests, bumps the version in `pyproject.toml` and `uv.lock`, commits, tags `vX.Y.Z` and asks before pushing.
+
 ## Configuration
 
 Both config files are validated against the Pydantic models in `volition/` (`Supplier` in `invoice.py`, `Defaults` in `config.py`) at startup and on every request, so edits apply without a restart.

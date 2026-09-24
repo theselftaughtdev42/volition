@@ -46,6 +46,11 @@ def invoice_form(defaults: DefaultsDep, supplier: SupplierDep) -> HTMLResponse:
     return HTMLResponse(render_form(defaults, supplier, next_invoice_number(defaults)))
 
 
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.post("/invoice")
 async def create_invoice(request: Request) -> Response:
     invoice = parse_invoice_form(await request.form())

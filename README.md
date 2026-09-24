@@ -16,6 +16,16 @@ make start      # http://127.0.0.1:3000, honours HOST and PORT
 
 Also: `make dev`, `make test`, `make lint`, `make format`.
 
+## Docker
+
+The image bundles Chromium and listens on port 3000, reading config from `/config` and keeping the counter in `/data`. Mount both: config holds bank details and is never baked into the image.
+
+```sh
+make docker.build && make docker.run    # mounts ./config read-only and ./data
+```
+
+Pushing a `v*` tag publishes `ghcr.io/theselftaughtdev42/volition` (see `.github/workflows/publish.yml`). `GET /health` backs the container healthcheck.
+
 ## Configuration
 
 Both config files are validated against the Pydantic models in `volition/` (`Supplier` in `invoice.py`, `Defaults` in `config.py`) at startup and on every request, so edits apply without a restart.

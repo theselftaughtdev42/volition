@@ -1,0 +1,23 @@
+.git
+.gitignore
+.venv
+
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Mounted at runtime, never baked in: the real configs hold bank details.
+config/supplier.json
+config/defaults.json
+data/
+.env
+.claude
+
+tests/
+Dockerfile
+.dockerignore
+.github/
+Makefile
+README.md
+LICENSE

@@ -179,6 +179,12 @@ def client() -> Iterator[TestClient]:
         yield c
 
 
+def test_health(client: TestClient) -> None:
+    res = client.get("/health")
+    assert res.status_code == 200
+    assert res.json() == {"status": "ok"}
+
+
 def test_get_form(client: TestClient) -> None:
     res = client.get("/")
     assert res.status_code == 200

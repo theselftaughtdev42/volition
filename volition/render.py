@@ -1,10 +1,9 @@
-"""Renders an invoice to HTML (Jinja2) and then to PDF (headless Chromium)."""
+"""Renders an invoice to HTML (Jinja2) and then to PDF (WeasyPrint)."""
 
-import asyncio
 import base64
 
 from jinja2 import Environment, FileSystemLoader
-from playwright.async_api import Browser, Playwright, async_playwright
+from weasyprint import HTML
 
 from volition.config import ROOT
 from volition.invoice import Invoice, Supplier, build_view_model
@@ -42,37 +41,6 @@ def render_html(invoice: Invoice, supplier: Supplier) -> str:
     return templates.get_template("invoice.html").render(**build_view_model(invoice, supplier), assets=ASSETS)
 
 
-# One Chromium, launched on first use and shared by every request.
-_playwright: Playwright | None = None
-_browser: Browser | None = None
-_launch_lock = asyncio.Lock()
-
-
-async def _get_browser() -> Browser:
-    global _playwright, _browser
-    async with _launch_lock:
-        if _browser is None or not _browser.is_connected():
-            if _playwright is None:
-                _playwright = await async_playwright().start()
-            _browser = await _playwright.chromium.launch()
-        return _browser
-
-
-async def render_pdf(invoice: Invoice, supplier: Supplier) -> bytes:
-    page = await (await _get_browser()).new_page()
-    try:
-        await page.set_content(render_html(invoice, supplier), wait_until="load")
-        await page.evaluate("document.fonts.ready.then(() => true)")
-        return await page.pdf(format="A4", print_background=True, prefer_css_page_size=True)
-    finally:
-        await page.close()
-
-
-async def close_browser() -> None:
-    global _playwright, _browser
-    browser, playwright = _browser, _playwright
-    _browser = _playwright = None
-    if browser is not None:
-        await browser.close()
-    if playwright is not None:
-        await playwright.stop()
+def render_pdf(invoice: Invoice, supplier: Supplier) -> bytes:
+    """CPU-bound: call from a worker thread in async code."""
+    return HTML(string=render_html(invoice, supplier)).write_pdf()

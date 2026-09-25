@@ -1,17 +1,24 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+
+# --- Build: resolve the venv with uv, which itself doesn't ship. ---
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS build
 
 WORKDIR /app
-
-# Chromium and its system libraries first, in a layer of their own, so a code change doesn't
-# re-download a browser. The Playwright version is read from the lockfile, so the browser
-# always matches the library the app imports. Kept outside /root so any user can launch it.
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project --no-dev \
-    && uv run --no-sync playwright install --with-deps chromium \
+RUN uv sync --frozen --no-install-project --no-dev
+
+# --- Runtime: plain Python plus the Pango stack WeasyPrint lays text out with. ---
+FROM python:3.14-slim-bookworm
+
+# No font packages: the invoice inlines its own fonts.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /app
+COPY --from=build /app/.venv /app/.venv
 COPY . .
 
 ENV PATH="/app/.venv/bin:$PATH" \

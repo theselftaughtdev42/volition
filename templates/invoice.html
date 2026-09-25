@@ -15,8 +15,7 @@
   @page { size: A4; margin: 20mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--paper); color: var(--ink);
-    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; line-height: 20px;
-    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; line-height: 20px; }
 
   .doc { display: flex; flex-direction: column; gap: var(--space-8); min-height: 257mm; }
   .label { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .08em;
@@ -29,8 +28,13 @@
   .logo { height: 28px; display: block; margin-bottom: var(--space-2); }
   .title { margin: 0 0 var(--space-4); font-size: 30px; line-height: 36px; font-weight: 600;
     letter-spacing: -.02em; text-align: right; }
-  .meta { display: grid; grid-template-columns: auto auto; gap: var(--space-1) var(--space-4);
-    align-items: baseline; justify-content: end; }
+  /* Label/value lists laid out as tables: WeasyPrint's grid support is unreliable. */
+  .kv { display: table; }
+  .kv > div { display: table-row; }
+  .kv > div > * { display: table-cell; vertical-align: baseline; }
+  .kv > div > * + * { padding-left: var(--space-4); }
+  .meta { margin-left: auto; }
+  .meta > div + div > * { padding-top: var(--space-1); }
   .meta .label { text-align: right; }
 
   .parties, .foot { display: flex; gap: var(--space-8); padding-top: var(--space-4);
@@ -53,13 +57,13 @@
     gap: var(--space-2); break-inside: avoid; }
   .totals .row { display: flex; justify-content: space-between; }
   .due { display: flex; justify-content: space-between; align-items: baseline;
-    margin: var(--space-1) calc(-1 * var(--space-4)) 0; padding: 12px var(--space-4);
+    margin: var(--space-1) 0 0 calc(-1 * var(--space-4)); padding: 12px 0 12px var(--space-4);
     background: var(--paper-sunken); border-top: 1px solid var(--ink); }
   .due .label { color: var(--ink); }
   .due .amount { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--signal); }
 
   .spacer { flex-grow: 1; }
-  .bank { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-4); }
+  .bank > div + div > * { padding-top: 2px; }
   .notes { white-space: pre-line; }
   .end { break-inside: avoid; display: flex; flex-direction: column; gap: var(--space-4); }
 </style>
@@ -78,11 +82,11 @@
     </div>
     <div>
       <h1 class="title">Invoice</h1>
-      <div class="meta">
-        <div class="label">Invoice no.</div><div class="num">{{ invoice.number }}</div>
-        <div class="label">Issued</div><div class="num">{{ fmt.issueDate }}</div>
-        <div class="label">Due</div><div class="num">{{ fmt.dueDate }}</div>
-        {% if fmt.period %}<div class="label">Period</div><div class="num">{{ fmt.period }}</div>{% endif %}
+      <div class="kv meta">
+        <div><span class="label">Invoice no.</span><span class="num">{{ invoice.number }}</span></div>
+        <div><span class="label">Issued</span><span class="num">{{ fmt.issueDate }}</span></div>
+        <div><span class="label">Due</span><span class="num">{{ fmt.dueDate }}</span></div>
+        {% if fmt.period %}<div><span class="label">Period</span><span class="num">{{ fmt.period }}</span></div>{% endif %}
       </div>
     </div>
   </header>
@@ -134,11 +138,11 @@
       <div>
         <div class="label">Payment</div>
         <div>Bank transfer within {{ supplier.paymentTermsDays }} days.</div>
-        <div class="bank">
-          <span class="muted">Account name</span><span>{{ supplier.bank.accountName }}</span>
-          <span class="muted">Sort code</span><span class="num" style="text-align:left">{{ supplier.bank.sortCode }}</span>
-          <span class="muted">Account no.</span><span class="num" style="text-align:left">{{ supplier.bank.accountNumber }}</span>
-          <span class="muted">Reference</span><span>{{ invoice.number }}</span>
+        <div class="kv bank">
+          <div><span class="muted">Account name</span><span>{{ supplier.bank.accountName }}</span></div>
+          <div><span class="muted">Sort code</span><span class="num" style="text-align:left">{{ supplier.bank.sortCode }}</span></div>
+          <div><span class="muted">Account no.</span><span class="num" style="text-align:left">{{ supplier.bank.accountNumber }}</span></div>
+          <div><span class="muted">Reference</span><span>{{ invoice.number }}</span></div>
         </div>
       </div>
       {% if invoice.notes %}

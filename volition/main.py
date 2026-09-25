@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import FormData
 
 from volition.config import (
     ROOT,
@@ -21,7 +21,7 @@ from volition.config import (
 )
 from volition.form import parse_invoice_form, render_form
 from volition.invoice import Supplier, parse_invoice_number
-from volition.render import close_browser, render_pdf
+from volition.render import render_pdf
 
 logger = logging.getLogger("volition")
 
@@ -32,7 +32,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     load_supplier()
     load_defaults()
     yield
-    await close_browser()
 
 
 app = FastAPI(title="Volition", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
@@ -51,13 +50,17 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+async def form_data(request: Request) -> FormData:
+    return await request.form()
+
+
+# A plain `def`, so FastAPI runs it on a worker thread: rendering and file I/O block.
 @app.post("/invoice")
-async def create_invoice(request: Request) -> Response:
-    invoice = parse_invoice_form(await request.form())
-    supplier = await run_in_threadpool(load_supplier)
-    pdf = await render_pdf(invoice, supplier)
+def create_invoice(form: Annotated[FormData, Depends(form_data)], supplier: SupplierDep) -> Response:
+    invoice = parse_invoice_form(form)
+    pdf = render_pdf(invoice, supplier)
     # Only count the number once the PDF actually exists.
-    await run_in_threadpool(record_invoice_number, parse_invoice_number(invoice.number))
+    record_invoice_number(parse_invoice_number(invoice.number))
     return Response(
         pdf,
         media_type="application/pdf",

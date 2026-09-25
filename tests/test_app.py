@@ -1,11 +1,12 @@
-import asyncio
 import json
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from pypdf import PdfReader
 from fastapi.testclient import TestClient
 from starlette.datastructures import FormData
 
@@ -19,7 +20,7 @@ from volition.config import (
 from volition.form import parse_invoice_form
 from volition.invoice import Invoice, LineItem, Supplier
 from volition.main import app
-from volition.render import close_browser, render_html, render_pdf
+from volition.render import render_html, render_pdf
 
 
 def test_invoice_numbers_start_from_the_configured_int_and_only_move_forward() -> None:
@@ -117,45 +118,40 @@ class PdfInfo:
     pages: int
     fonts: list[str]
     images: int
+    size: tuple[float, float]
 
 
 def inspect_pdf(pdf: bytes) -> PdfInfo:
-    """Page count and font names, read from the PDF's uncompressed object dictionaries."""
-    text = pdf.decode("latin1")
-    return PdfInfo(
-        pages=len(re.findall(r"/Type\s*/Page\b", text)),
-        fonts=sorted({m for m in re.findall(r"/BaseFont\s*/(?:[A-Z]{6}\+)?([\w-]+)", text)}),
-        images=len(re.findall(r"/Subtype\s*/Image\b", text)),
-    )
-
-
-def pdf_of(invoice: Invoice, supplier: Supplier) -> bytes:
-    async def go() -> bytes:
-        try:
-            return await render_pdf(invoice, supplier)
-        finally:
-            await close_browser()
-
-    return asyncio.run(go())
+    """Page count, font names (subset prefix dropped), image count and first-page size in points."""
+    reader = PdfReader(BytesIO(pdf))
+    fonts: set[str] = set()
+    images = 0
+    for page in reader.pages:
+        resources = page.get("/Resources", {})
+        for font in resources.get("/Font", {}).values():
+            fonts.add(re.sub(r"^[A-Z]{6}\+", "", str(font.get_object()["/BaseFont"]).lstrip("/")))
+        for xobject in resources.get("/XObject", {}).values():
+            images += xobject.get_object().get("/Subtype") == "/Image"
+    box = reader.pages[0].mediabox
+    return PdfInfo(len(reader.pages), sorted(fonts), images, (float(box.width), float(box.height)))
 
 
 def test_example_invoice_renders_to_one_a4_page_with_embedded_jetbrains_mono_and_a_vector_logo(
     invoice: Invoice, supplier: Supplier
 ) -> None:
-    pdf = pdf_of(invoice, supplier)
-    info = inspect_pdf(pdf)
+    info = inspect_pdf(render_pdf(invoice, supplier))
     assert info.pages == 1
-    assert info.fonts and all(f.startswith("JetBrainsMono") for f in info.fonts), f"fonts: {info.fonts}"
+    assert info.fonts and all(f.replace("-", "").startswith("JetBrainsMono") for f in info.fonts), (
+        f"fonts: {info.fonts}"
+    )
     assert info.images == 0
-    box = re.search(r"/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]", pdf.decode("latin1"))
-    assert box, "no MediaBox"
-    width, height = float(box[1]), float(box[2])
+    width, height = info.size
     assert abs(width - 595.28) < 1 and abs(height - 841.89) < 1, f"MediaBox {width}×{height}"
 
 
 def test_a_25_line_invoice_paginates_beyond_the_first_page(invoice: Invoice, supplier: Supplier) -> None:
     items = [LineItem(description=f"Task {i + 1}", detail="Detail", quantity=1, rate=100) for i in range(25)]
-    info = inspect_pdf(pdf_of(invoice.model_copy(update={"line_items": items}), supplier))
+    info = inspect_pdf(render_pdf(invoice.model_copy(update={"line_items": items}), supplier))
     assert info.pages > 1, f"pages: {info.pages}"
 
 
@@ -174,7 +170,7 @@ def test_stored_invoice_json_is_validated(invoice: Invoice) -> None:
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
-    # The context manager runs the lifespan, and keeps one event loop for the shared browser.
+    # The context manager runs the lifespan.
     with TestClient(app) as c:
         yield c
 

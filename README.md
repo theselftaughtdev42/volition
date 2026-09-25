@@ -4,10 +4,10 @@ Invoice generator for Mackay Software: a small web form that produces a branded 
 
 ## Setup
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.14, [uv](https://docs.astral.sh/uv/) and Pango, which [WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation) renders PDFs with (`brew install pango`, or `apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0`).
 
 ```sh
-make install    # add --with-deps to the playwright step on a fresh Linux server
+make install
 cp config/supplier.example.json config/supplier.json
 cp config/defaults.example.json config/defaults.json
 # edit both files, then:
@@ -18,7 +18,7 @@ Also: `make dev`, `make test`, `make lint`, `make format`.
 
 ## Docker
 
-The image bundles Chromium and listens on port 3000, reading config from `/config` and keeping the counter in `/data`. Mount both: config holds bank details and is never baked into the image.
+The image listens on port 3000, reading config from `/config` and keeping the counter in `/data`. Mount both: config holds bank details and is never baked into the image.
 
 ```sh
 make docker.build && make docker.run    # mounts ./config read-only and ./data

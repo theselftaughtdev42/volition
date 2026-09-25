@@ -2,7 +2,6 @@
 
 install:
 	uv sync
-	uv run playwright install chromium
 
 dev:
 	uv run fastapi dev --port 3000

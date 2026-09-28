@@ -1,97 +1,6 @@
-<!doctype html>
-<html lang="en-GB">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Volition - Invoice Generator</title>
-<link rel="icon" href="/assets/ms-mark.svg">
-<style>
-  @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype"); }
-  @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("/assets/fonts/JetBrainsMono-Medium.ttf") format("truetype"); }
-  @font-face { font-family: "JetBrains Mono"; font-weight: 600; src: url("/assets/fonts/JetBrainsMono-SemiBold.ttf") format("truetype"); }
-
-  :root {
-    --paper: #FFFFFF; --paper-sunken: #F4F4F2; --line: #E2E2DF;
-    --ink: #111111; --ink-muted: #6B6B68; --signal: #C8341B; --signal-soft: #FBEAE6; --on-signal: #FFFFFF;
-    --space-1: 4px; --space-2: 8px; --space-4: 16px; --space-8: 32px;
-    color-scheme: light dark;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --paper: #111111; --paper-sunken: #1B1B1A; --line: #333331;
-      --ink: #F2F2F0; --ink-muted: #9A9A96; --signal: #FF7A5C; --signal-soft: #3A1710; --on-signal: #111111;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--ink);
-    font: 13px/20px "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
-  main { max-width: 800px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
-
-  header { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4);
-    padding-bottom: var(--space-4); border-bottom: 1px solid var(--ink); }
-  h1 { margin: 0; font-size: 17px; line-height: 24px; font-weight: 600; }
-
-  fieldset { border: 0; margin: var(--space-8) 0 0; padding: 0; min-width: 0; }
-  legend { padding: 0; margin-bottom: var(--space-4); }
-  .label, legend { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--ink-muted); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4); }
-  .wide { grid-column: 1 / -1; }
-  label { display: flex; flex-direction: column; gap: var(--space-1); }
-  .hint { font-size: 11px; line-height: 16px; color: var(--ink-muted); }
-
-  input, select, textarea, button { font: inherit; color: inherit; }
-  input, select, textarea { width: 100%; padding: 6px var(--space-2); background: var(--paper);
-    border: 1px solid var(--line); border-radius: 2px; }
-  input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outline-offset: -1px; border-color: var(--ink); }
-  input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
-  textarea { resize: vertical; }
-  label.check { flex-direction: row; align-items: center; gap: var(--space-2); align-self: end;
-    min-height: 34px; cursor: pointer; }
-  input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
-  .prefixed { display: flex; align-items: center; gap: var(--space-2); }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { background: var(--paper-sunken); border-bottom: 1px solid var(--ink); padding: var(--space-2);
-    text-align: left; }
-  th.num { text-align: right; }
-  td { padding: var(--space-2) var(--space-2) var(--space-2) 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-  td:first-child { padding-left: 0; }
-  .stack { display: flex; flex-direction: column; gap: var(--space-1); }
-  .col-qty { width: 96px; } .col-rate { width: 120px; } .col-x { width: 32px; }
-
-  button { cursor: pointer; border-radius: 4px; border: 1px solid var(--line); background: var(--paper);
-    padding: 6px var(--space-4); }
-  button:hover { border-color: var(--ink); }
-  button.remove { padding: 6px 0; width: 32px; color: var(--ink-muted); }
-  button.add { margin-top: var(--space-4); }
-  button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
-  button.primary:disabled { opacity: .6; cursor: progress; }
-
-  .actions { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
-    margin-top: var(--space-8); padding-top: var(--space-4); border-top: 1px solid var(--line); }
-  .status:empty { display: none; }
-  .errors { margin: var(--space-4) 0 0; padding: var(--space-4); padding-left: var(--space-8);
-    background: var(--signal-soft); color: var(--signal); }
-  .errors:empty { display: none; }
-  a { color: inherit; }
-
-  @media (max-width: 600px) {
-    thead { display: none; }
-    tr { display: grid; grid-template-columns: 1fr 1fr 32px; gap: var(--space-2); padding: var(--space-2) 0;
-      border-bottom: 1px solid var(--line); }
-    td, td.col-qty, td.col-rate { display: block; width: auto; padding: 0; border: 0; }
-    td.col-desc { grid-column: 1 / -1; }
-  }
-</style>
-</head>
-<body>
-<main>
-  <header>
-    <h1>Volition - Invoice Generator</h1>
-    <span class="label">{{ supplier.legalName }}</span>
-  </header>
-
+{% extends "base.html" %}
+{% block title %}Invoice · Volition{% endblock %}
+{% block content %}
   <form id="invoice" method="post" action="/invoice">
     <fieldset>
       <legend>Invoice</legend>
@@ -118,21 +27,27 @@
 
     <fieldset>
       <legend>Bill to</legend>
-      <div class="grid">
-        <label><span class="label">Name</span>
-          <input name="clientName" required value="{{ values.client.name }}">
-        </label>
-        <label><span class="label">Contact</span>
-          <input name="clientContact" value="{{ values.client.contact }}">
-        </label>
-        <label><span class="label">Email</span>
-          <input name="clientEmail" type="email" value="{{ values.client.email }}">
-        </label>
-        <label class="wide"><span class="label">Address</span>
-          <textarea name="clientAddress" rows="3" required>{{ values.client.address }}</textarea>
-          <span class="hint">One line per row</span>
-        </label>
-      </div>
+      {% if clients %}
+      <label><span class="label">Client</span>
+        <select name="clientId" id="client" required>
+          {% if not values.client %}
+          <option value="" disabled selected>Choose a client…</option>
+          {% endif %}
+          {% for client in clients %}
+          <option value="{{ client.id }}" {% if values.client and client.id == values.client.id %}selected{% endif %}>{{ client.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <ul class="summary" id="bill-to">
+        {% if values.client %}
+        {% for line in values.client.billTo %}
+        <li>{{ line }}</li>
+        {% endfor %}
+        {% endif %}
+      </ul>
+      {% else %}
+      <p class="empty">No clients yet. <a href="/clients/new">Add one</a> to start invoicing.</p>
+      {% endif %}
     </fieldset>
 
     <fieldset>
@@ -186,18 +101,37 @@
     <ul class="errors" id="errors" role="alert"></ul>
 
     <div class="actions">
-      <button type="submit" class="primary">Generate PDF</button>
+      <button type="submit" class="primary" {% if not clients %}disabled{% endif %}>Generate PDF</button>
       <span class="status" id="status" role="status"></span>
     </div>
   </form>
-</main>
+{% endblock %}
 
+{% block script %}
+<script type="application/json" id="client-data">{{ clients | tojson }}</script>
 <script>
   const form = document.getElementById("invoice");
   const lines = document.getElementById("lines");
   const errors = document.getElementById("errors");
   const status = document.getElementById("status");
   const submit = form.querySelector("button[type=submit]");
+  const clients = new Map(JSON.parse(document.getElementById("client-data").textContent).map((c) => [c.id, c]));
+
+  // Choosing a client fills the Bill-to summary and replaces the invoice fields with that client's defaults.
+  document.getElementById("client")?.addEventListener("change", (e) => {
+    const client = clients.get(e.target.value);
+    document.getElementById("bill-to").replaceChildren(
+      ...client.billTo.map((line) => Object.assign(document.createElement("li"), { textContent: line })));
+    form.elements.unit.value = client.unit;
+    form.elements.vat.checked = client.vat;
+    form.elements.notes.value = client.notes;
+    const template = lines.rows[0];
+    lines.replaceChildren(...client.lineItems.map((item) => {
+      const row = template.cloneNode(true);
+      for (const input of row.querySelectorAll("input")) input.value = item[input.name] ?? "";
+      return row;
+    }));
+  });
 
   // New rows copy the first row with its values cleared, except the rate.
   document.getElementById("add-line").addEventListener("click", () => {
@@ -243,5 +177,4 @@
     }
   });
 </script>
-</body>
-</html>
+{% endblock %}

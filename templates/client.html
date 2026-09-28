@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ values.name if client_id else "New client" }} · Volition{% endblock %}
+{% block content %}
+  <form id="client" method="post" action="{{ '/clients/' ~ client_id if client_id else '/clients' }}">
+    <fieldset>
+      <legend>{{ "Client" if client_id else "New client" }}</legend>
+      <div class="grid">
+        <label><span class="label">Name</span>
+          <input name="name" required value="{{ values.name }}">
+        </label>
+        <label><span class="label">Contact</span>
+          <input name="contact" value="{{ values.contact }}">
+        </label>
+        <label><span class="label">Email</span>
+          <input name="email" type="email" value="{{ values.email }}">
+        </label>
+        <label class="wide"><span class="label">Address</span>
+          <textarea name="address" rows="3" required>{{ values.address }}</textarea>
+          <span class="hint">One line per row</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Invoice defaults</legend>
+      <div class="grid" style="margin-bottom: var(--space-4)">
+        <label><span class="label">Unit</span>
+          <select name="unit">
+            <option value="" {% if not values.unit %}selected{% endif %}>Default</option>
+            <option value="days" {% if values.unit == "days" %}selected{% endif %}>Days</option>
+            <option value="hours" {% if values.unit == "hours" %}selected{% endif %}>Hours</option>
+            <option value="items" {% if values.unit == "items" %}selected{% endif %}>Items</option>
+          </select>
+        </label>
+        <label><span class="label">VAT ({{ vatPercent }}%)</span>
+          <select name="vat">
+            <option value="" {% if not values.vat %}selected{% endif %}>Default</option>
+            <option value="yes" {% if values.vat == "yes" %}selected{% endif %}>Charge VAT</option>
+            <option value="no" {% if values.vat == "no" %}selected{% endif %}>No VAT</option>
+          </select>
+        </label>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="label">Description / detail</th>
+            <th class="label num col-rate">Rate £</th>
+            <th class="col-x"></th>
+          </tr>
+        </thead>
+        <tbody id="lines">
+          {% for item in values.lineItems %}
+          <tr>
+            <td class="col-desc"><div class="stack">
+              <input name="description" value="{{ item.description }}" placeholder="Description" aria-label="Description">
+              <input name="detail" value="{{ item.detail }}" placeholder="Detail (optional)" aria-label="Detail">
+            </div></td>
+            <td class="col-rate"><input name="rate" type="number" min="0" step="1" value="{{ item.rate }}" placeholder="Rate" aria-label="Rate"></td>
+            <td class="col-x"><button type="button" class="remove" aria-label="Remove line">×</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="add" id="add-line">+ Add line</button>
+      <p class="hint">Default = as set in defaults.json. Quantities are entered on each invoice.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <label>
+        <textarea name="notes" rows="2" placeholder="Blank = default notes" aria-label="Notes">{{ values.notes }}</textarea>
+      </label>
+    </fieldset>
+
+    {% if errors %}
+    <ul class="errors" role="alert">
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="actions">
+      <button type="submit" class="primary">{{ "Save" if client_id else "Add client" }}</button>
+      <a href="/clients">Cancel</a>
+      {% if client_id %}
+      <button type="submit" class="danger" form="delete">Delete</button>
+      {% endif %}
+    </div>
+  </form>
+  {% if client_id %}
+  <form id="delete" method="post" action="/clients/{{ client_id }}/delete"
+    onsubmit="return confirm('Delete this client? This cannot be undone.')"></form>
+  {% endif %}
+{% endblock %}
+
+{% block script %}
+<script>
+  const lines = document.getElementById("lines");
+
+  document.getElementById("add-line").addEventListener("click", () => {
+    const row = lines.rows[0].cloneNode(true);
+    for (const input of row.querySelectorAll("input")) input.value = "";
+    lines.append(row);
+    row.querySelector("input").focus();
+  });
+
+  lines.addEventListener("click", (e) => {
+    const button = e.target.closest("button.remove");
+    if (!button) return;
+    const row = button.closest("tr");
+    if (lines.rows.length > 1) row.remove();
+    else for (const input of row.querySelectorAll("input")) input.value = "";
+  });
+</script>
+{% endblock %}

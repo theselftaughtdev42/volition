@@ -1,12 +1,16 @@
-"""The invoice form: default values for rendering it, and parsing a submission."""
+"""The invoice and client forms: values for rendering them, and parsing submissions."""
 
 import json
 import math
 import re
+from collections.abc import Callable
 from datetime import date, datetime
 from typing import Any, Protocol
 
-from volition.config import Defaults, ValidationError, validate_invoice
+import pydantic
+
+from volition.clients import ClientDetails, ClientRecord
+from volition.config import Defaults, ValidationError, describe, validate_invoice
 from volition.invoice import (
     VAT_PERCENT,
     Invoice,
@@ -18,26 +22,55 @@ from volition.invoice import (
 from volition.render import templates
 
 
-def render_form(defaults: Defaults, supplier: Supplier, next_number: int, now: datetime | None = None) -> str:
+def _invoice_presets(defaults: Defaults, client: ClientRecord | None = None) -> dict[str, Any]:
+    """The fields choosing a client fills: the client's own defaults, else defaults.json's."""
+    line_items = (client.line_items if client and client.line_items else None) or defaults.line_items or []
+    notes = client.notes if client and client.notes is not None else defaults.notes
+    vat = client.vat if client and client.vat is not None else defaults.vat
+    return {
+        "vat": True if vat is None else vat,
+        "unit": (client.unit if client else None) or defaults.unit or "days",
+        "lineItems": [item.model_dump(by_alias=True, exclude_none=True) for item in line_items] or [{}],
+        "notes": notes or "",
+    }
+
+
+def _client_option(client: ClientRecord, defaults: Defaults) -> dict[str, Any]:
+    return {
+        "id": client.id,
+        "name": client.name,
+        # What the Bill-to summary shows, one line each.
+        "billTo": [line for line in [client.contact, *client.address, client.email] if line],
+        **_invoice_presets(defaults, client),
+    }
+
+
+def render_form(
+    defaults: Defaults,
+    supplier: Supplier,
+    next_number: int,
+    clients: list[ClientRecord],
+    now: datetime | None = None,
+) -> str:
     now = now or datetime.now()
     today = local_iso_date(now)
     period = month_period(date.fromisoformat(today))
-    client = defaults.client.model_dump(by_alias=True, exclude_none=True) if defaults.client else {}
-    line_items = [item.model_dump(by_alias=True, exclude_none=True) for item in defaults.line_items or []]
+    options = [_client_option(client, defaults) for client in clients]
+    # A lone client is preselected; with several, choosing is required so no one is billed by accident.
+    selected = options[0] if len(options) == 1 else None
     return templates.get_template("form.html").render(
+        page="invoice",
         supplier=supplier.model_dump(by_alias=True, exclude_none=True),
         vatPercent=VAT_PERCENT,
+        clients=options,
         values={
             "number": next_number,
             "numberFormatted": format_invoice_number(next_number),
             "issueDate": today,
             "periodStart": period.start.isoformat(),
             "periodEnd": period.end.isoformat(),
-            "vat": True if defaults.vat is None else defaults.vat,
-            "unit": defaults.unit or "days",
-            "client": {**client, "address": "\n".join(client.get("address", []))},
-            "lineItems": line_items or [{}],
-            "notes": defaults.notes or "",
+            "client": selected,
+            **(selected or _invoice_presets(defaults)),
         },
     )
 
@@ -75,8 +108,11 @@ def _whole_number(value: str, label: str, minimum: int, errors: list[str]) -> in
     return int(n)
 
 
-def parse_invoice_form(body: FormBody) -> Invoice:
-    """Turns a form submission into a valid Invoice, or raises ValidationError."""
+def parse_invoice_form(body: FormBody, find_client: Callable[[str], ClientRecord | None]) -> Invoice:
+    """Turns a form submission into a valid Invoice, or raises ValidationError.
+
+    The client is billed as stored, looked up by the submitted clientId.
+    """
     errors: list[str] = []
 
     invoice_number = _whole_number(_one(body, "number"), "Invoice number", 1, errors)
@@ -117,14 +153,16 @@ def parse_invoice_form(body: FormBody) -> Invoice:
 
     if not _one(body, "issueDate"):
         errors.append("Issue date is required")
-    if not _one(body, "clientName"):
-        errors.append("Client name is required")
-    if not _one(body, "clientAddress"):
-        errors.append("Client address is required")
+    client_id = _one(body, "clientId")
+    client = find_client(client_id) if client_id else None
+    if not client_id:
+        errors.append("Choose a client")
+    elif client is None:
+        errors.append("That client no longer exists; reload the page")
 
     if errors:
         raise ValidationError("invoice", errors)
-    assert invoice_number is not None
+    assert invoice_number is not None and client is not None
 
     invoice = {
         "number": format_invoice_number(invoice_number),
@@ -133,12 +171,7 @@ def parse_invoice_form(body: FormBody) -> Invoice:
         "period": {"start": period_start, "end": period_end} if period_start or period_end else None,
         "vat": _one(body, "vat") == "on",
         "unit": _one(body, "unit"),
-        "client": {
-            "name": _one(body, "clientName"),
-            "contact": _one(body, "clientContact") or None,
-            "address": [line.strip() for line in _one(body, "clientAddress").split("\n") if line.strip()],
-            "email": _one(body, "clientEmail") or None,
-        },
+        "client": client.bill_to().model_dump(mode="json", by_alias=True),
         "lineItems": line_items,
         "notes": _one(body, "notes") or None,
     }
@@ -152,3 +185,88 @@ def _drop_none(value: Any) -> Any:
     if isinstance(value, list):
         return [_drop_none(v) for v in value]
     return value
+
+
+def _lines(text: str) -> list[str]:
+    return [line.strip() for line in text.split("\n") if line.strip()]
+
+
+def client_form_values(client: ClientRecord | None = None) -> dict[str, Any]:
+    """Values for the client form: a stored client's, or blanks for a new one."""
+    if client is None:
+        return {"address": "", "vat": "", "unit": "", "lineItems": [{}], "notes": ""}
+    data = client.model_dump(by_alias=True, exclude_none=True)
+    return {
+        **data,
+        "address": "\n".join(client.address),
+        "vat": "" if client.vat is None else "yes" if client.vat else "no",
+        "unit": client.unit or "",
+        "lineItems": data["lineItems"] or [{}],
+    }
+
+
+def submitted_client_values(body: FormBody) -> dict[str, Any]:
+    """A client form submission as values for re-rendering it, e.g. alongside its errors."""
+    rows = zip(_all(body, "description"), _all(body, "detail"), _all(body, "rate"), strict=False)
+    return {
+        **{key: _one(body, key) for key in ["name", "contact", "email", "address", "vat", "unit", "notes"]},
+        "lineItems": [{"description": d, "detail": dt, "rate": r} for d, dt, r in rows] or [{}],
+    }
+
+
+def parse_client_form(body: FormBody) -> ClientDetails:
+    """Turns a client form submission into valid ClientDetails, or raises ValidationError."""
+    errors: list[str] = []
+    if not _one(body, "name"):
+        errors.append("Name is required")
+    if not _lines(_one(body, "address")):
+        errors.append("Address is required")
+
+    line_items = []
+    values = submitted_client_values(body)
+    for i, row in enumerate(r for r in values["lineItems"] if any(r.values())):
+        label = f"Line {i + 1}"
+        if not row["description"]:
+            errors.append(f"{label}: description is required")
+        rate = _whole_number(row["rate"], f"{label}: rate", 0, errors) if row["rate"] else None
+        line_items.append({"description": row["description"], "detail": row["detail"] or None, "rate": rate})
+
+    vat = _one(body, "vat")
+    if errors:
+        raise ValidationError("client", errors)
+
+    client = {
+        "name": _one(body, "name"),
+        "contact": _one(body, "contact") or None,
+        "address": _lines(_one(body, "address")),
+        "email": _one(body, "email") or None,
+        "vat": {"yes": True, "no": False}.get(vat, vat or None),
+        "unit": _one(body, "unit") or None,
+        "lineItems": line_items,
+        "notes": _one(body, "notes") or None,
+    }
+    try:
+        return ClientDetails.model_validate_json(json.dumps(_drop_none(client)))
+    except pydantic.ValidationError as e:
+        raise ValidationError("client", describe(e)) from None
+
+
+def render_clients(supplier: Supplier, clients: list[ClientRecord]) -> str:
+    return templates.get_template("clients.html").render(
+        page="clients",
+        supplier=supplier.model_dump(by_alias=True, exclude_none=True),
+        clients=[client.model_dump(by_alias=True, exclude_none=True) for client in clients],
+    )
+
+
+def render_client_form(
+    supplier: Supplier, values: dict[str, Any], client_id: str | None = None, errors: list[str] | None = None
+) -> str:
+    return templates.get_template("client.html").render(
+        page="clients",
+        supplier=supplier.model_dump(by_alias=True, exclude_none=True),
+        vatPercent=VAT_PERCENT,
+        values=values,
+        client_id=client_id,
+        errors=errors or [],
+    )

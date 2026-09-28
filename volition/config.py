@@ -1,14 +1,12 @@
-"""Loads and validates the gitignored config files."""
+"""Loads and validates the gitignored config file (supplier.json), and where the data lives."""
 
 import json
 import os
 from pathlib import Path
-from typing import Annotated
 
 import pydantic
-from pydantic import Field
 
-from volition.invoice import Invoice, Model, Supplier, Unit
+from volition.invoice import Invoice, Model, Supplier
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -20,27 +18,6 @@ def config_dir() -> Path:
 
 def data_dir() -> Path:
     return Path(os.environ.get("DATA_DIR") or ROOT / "data")
-
-
-class DefaultsLineItem(Model):
-    description: str | None = None
-    detail: str | None = None
-    rate: Annotated[int, Field(ge=0)] | None = None
-
-
-class Defaults(Model):
-    """Pre-filled values for the invoice form, used where the chosen client sets none.
-
-    Everything can be overridden per invoice.
-    """
-
-    #: Number used when no invoice has been generated yet (1 → MS-0001).
-    invoice_number_start: Annotated[int, Field(ge=1)]
-    #: Whether the VAT box starts ticked.
-    vat: bool | None = None
-    unit: Unit | None = None
-    line_items: list[DefaultsLineItem] | None = None
-    notes: str | None = None
 
 
 class ValidationError(Exception):
@@ -81,7 +58,3 @@ def _load_config[M: Model](model: type[M], file: str) -> M:
 def load_supplier() -> Supplier:
     """Read on every request so edits to the config files apply without a restart."""
     return _load_config(Supplier, "supplier.json")
-
-
-def load_defaults() -> Defaults:
-    return _load_config(Defaults, "defaults.json")

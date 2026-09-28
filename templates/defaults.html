@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Defaults · Volition{% endblock %}
+{% block content %}
+  <form id="defaults" method="post" action="/defaults">
+    {% if first_run %}
+    <p class="intro">Welcome. Set the defaults new invoices start with; you can change them on this page later.</p>
+    {% endif %}
+    <fieldset>
+      <legend>Invoice numbers</legend>
+      <div class="grid">
+        <label><span class="label">First invoice number</span>
+          <span class="prefixed">MS- <input name="invoiceNumberStart" type="number" min="1" step="1" required value="{{ values.invoiceNumberStart }}"></span>
+          <span class="hint">Used until an invoice is generated; after that, the last number + 1. Raise it to jump ahead.</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Lines</legend>
+      <div class="grid" style="margin-bottom: var(--space-4)">
+        <label><span class="label">Unit</span>
+          <select name="unit">
+            <option value="days" {% if values.unit == "days" %}selected{% endif %}>Days</option>
+            <option value="hours" {% if values.unit == "hours" %}selected{% endif %}>Hours</option>
+            <option value="items" {% if values.unit == "items" %}selected{% endif %}>Items</option>
+          </select>
+        </label>
+        <label class="check">
+          <input name="vat" type="checkbox" {% if values.vat %}checked{% endif %}>
+          <span>Charge VAT ({{ vatPercent }}%)</span>
+        </label>
+      </div>
+{% include "_preset_lines.html" %}
+      <p class="hint">Used where a client sets none of its own. Quantities are entered on each invoice.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <label>
+        <textarea name="notes" rows="2" placeholder="Blank = no notes section" aria-label="Notes">{{ values.notes }}</textarea>
+      </label>
+    </fieldset>
+
+    {% if errors %}
+    <ul class="errors" role="alert">
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="actions">
+      <button type="submit" class="primary">{{ "Save and continue" if first_run else "Save" }}</button>
+      {% if not first_run %}<a href="/">Cancel</a>{% endif %}
+    </div>
+  </form>
+{% endblock %}

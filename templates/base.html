@@ -90,6 +90,7 @@
   .summary { margin: 0; padding: var(--space-2) 0 0; list-style: none; }
   .summary:empty { display: none; }
   .empty { margin: 0; color: var(--ink-muted); }
+  .intro { margin: var(--space-8) 0 0; }
   button.danger { color: var(--signal); margin-left: auto; }
   button.danger:hover { border-color: var(--signal); }
   a.button { display: inline-block; text-decoration: none; border-radius: 4px; border: 1px solid var(--line);
@@ -106,6 +107,7 @@
       <nav>
         <a href="/" {% if page == "invoice" %}aria-current="page"{% endif %}>Invoice</a>
         <a href="/clients" {% if page == "clients" %}aria-current="page"{% endif %}>Clients</a>
+        <a href="/defaults" {% if page == "defaults" %}aria-current="page"{% endif %}>Defaults</a>
       </nav>
     </div>
     <span class="label">{{ supplier.legalName }}</span>

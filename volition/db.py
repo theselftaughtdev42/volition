@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from volition.config import Defaults, data_dir
+from volition.config import data_dir
 
 #: One entry per schema version; `PRAGMA user_version` records how many have been applied.
 #: Append new steps, never edit applied ones.
@@ -91,10 +91,11 @@ def _last_invoice_number(conn: sqlite3.Connection) -> int | None:
     return None if row is None else row["value"]
 
 
-def next_invoice_number(defaults: Defaults) -> int:
+def next_invoice_number(start: int) -> int:
+    """`start` (the defaults' invoiceNumberStart) for the first invoice, then the highest issued + 1."""
     with transaction() as conn:
         last = _last_invoice_number(conn)
-    return defaults.invoice_number_start if last is None else max(last + 1, defaults.invoice_number_start)
+    return start if last is None else max(last + 1, start)
 
 
 def record_invoice_number(n: int) -> None:

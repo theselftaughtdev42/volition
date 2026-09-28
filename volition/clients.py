@@ -26,7 +26,7 @@ class ClientDetails(Model):
     contact: str | None = None
     address: Annotated[list[str], Field(min_length=1)]
     email: EmailStr | None = None
-    #: Invoice defaults for this client; None falls back to defaults.json.
+    #: Invoice defaults for this client; None falls back to the global defaults.
     vat: bool | None = None
     unit: Unit | None = None
     line_items: list[ClientLineItem] = []

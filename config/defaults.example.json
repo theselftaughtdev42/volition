@@ -1,8 +1,0 @@
-{
-  "invoiceNumberStart": 1,
-  "vat": true,
-  "unit": "days",
-  "lineItems": [
-    { "description": "IT & Software Consultancy Services", "rate": 650 }
-  ]
-}

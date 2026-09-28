@@ -40,29 +40,8 @@
           </select>
         </label>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th class="label">Description / detail</th>
-            <th class="label num col-rate">Rate £</th>
-            <th class="col-x"></th>
-          </tr>
-        </thead>
-        <tbody id="lines">
-          {% for item in values.lineItems %}
-          <tr>
-            <td class="col-desc"><div class="stack">
-              <input name="description" value="{{ item.description }}" placeholder="Description" aria-label="Description">
-              <input name="detail" value="{{ item.detail }}" placeholder="Detail (optional)" aria-label="Detail">
-            </div></td>
-            <td class="col-rate"><input name="rate" type="number" min="0" step="1" value="{{ item.rate }}" placeholder="Rate" aria-label="Rate"></td>
-            <td class="col-x"><button type="button" class="remove" aria-label="Remove line">×</button></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <button type="button" class="add" id="add-line">+ Add line</button>
-      <p class="hint">Default = as set in defaults.json. Quantities are entered on each invoice.</p>
+{% include "_preset_lines.html" %}
+      <p class="hint">Default = as set on the <a href="/defaults">Defaults</a> page. Quantities are entered on each invoice.</p>
     </fieldset>
 
     <fieldset>
@@ -92,25 +71,4 @@
   <form id="delete" method="post" action="/clients/{{ client_id }}/delete"
     onsubmit="return confirm('Delete this client? This cannot be undone.')"></form>
   {% endif %}
-{% endblock %}
-
-{% block script %}
-<script>
-  const lines = document.getElementById("lines");
-
-  document.getElementById("add-line").addEventListener("click", () => {
-    const row = lines.rows[0].cloneNode(true);
-    for (const input of row.querySelectorAll("input")) input.value = "";
-    lines.append(row);
-    row.querySelector("input").focus();
-  });
-
-  lines.addEventListener("click", (e) => {
-    const button = e.target.closest("button.remove");
-    if (!button) return;
-    const row = button.closest("tr");
-    if (lines.rows.length > 1) row.remove();
-    else for (const input of row.querySelectorAll("input")) input.value = "";
-  });
-</script>
 {% endblock %}

@@ -1,6 +1,5 @@
 import json
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -11,7 +10,7 @@ from fastapi.testclient import TestClient
 from starlette.datastructures import FormData
 
 from volition.clients import ClientDetails, ClientRecord, create_client
-from volition.config import Defaults, ValidationError, validate_invoice
+from volition.config import ValidationError, validate_invoice
 from volition.db import next_invoice_number, record_invoice_number
 from volition.form import parse_invoice_form
 from volition.invoice import Invoice, LineItem, Supplier
@@ -20,13 +19,12 @@ from volition.render import render_html, render_pdf
 
 
 def test_invoice_numbers_start_from_the_configured_int_and_only_move_forward() -> None:
-    defaults = Defaults(invoice_number_start=42)
-    assert next_invoice_number(defaults) == 42
+    assert next_invoice_number(42) == 42
     record_invoice_number(42)
-    assert next_invoice_number(defaults) == 43
+    assert next_invoice_number(42) == 43
     record_invoice_number(10)  # regenerating an old invoice
-    assert next_invoice_number(defaults) == 43
-    assert next_invoice_number(Defaults(invoice_number_start=100)) == 100
+    assert next_invoice_number(42) == 43
+    assert next_invoice_number(100) == 100
 
 
 FORM_BODY: dict[str, str | list[str]] = {
@@ -175,13 +173,6 @@ def test_stored_invoice_json_is_validated(invoice: Invoice) -> None:
 # --- HTTP ---
 
 
-@pytest.fixture
-def client() -> Iterator[TestClient]:
-    # The context manager runs the lifespan.
-    with TestClient(app) as c:
-        yield c
-
-
 def test_health(client: TestClient) -> None:
     res = client.get("/health")
     assert res.status_code == 200
@@ -193,7 +184,7 @@ def test_get_form(client: TestClient) -> None:
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("text/html")
     assert '<form id="invoice" method="post" action="/invoice">' in res.text
-    assert 'value="1"' in res.text  # invoiceNumberStart from defaults.example.json
+    assert 'value="1"' in res.text  # invoiceNumberStart from the saved defaults
     assert "Next in sequence: MS-0001" in res.text
     assert 'value="IT &amp; Software Consultancy Services"' in res.text
     assert '<option value="days" selected>Days</option>' in res.text
@@ -217,14 +208,15 @@ def test_post_valid_invoice_returns_pdf_and_advances_counter(client: TestClient)
 
 
 def test_invalid_config_is_a_422_on_request(client: TestClient, isolated_dirs: Path) -> None:
-    (isolated_dirs / "config/defaults.json").write_text('{"invoiceNumberStart": 0}')
+    supplier = json.loads((isolated_dirs / "config/supplier.json").read_text())
+    (isolated_dirs / "config/supplier.json").write_text(json.dumps({**supplier, "paymentTermsDays": "30"}))
     res = client.get("/")
     assert res.status_code == 422
-    assert res.json()["errors"][0].startswith("/invoiceNumberStart ")
+    assert res.json()["errors"][0].startswith("/paymentTermsDays ")
 
 
 def test_unexpected_errors_are_json_500s(client: TestClient, isolated_dirs: Path) -> None:
-    (isolated_dirs / "config/defaults.json").unlink()
+    (isolated_dirs / "config/supplier.json").unlink()
     res = client.get("/")
     assert res.status_code == 500
     assert res.json()["errors"][0].startswith("Missing ")

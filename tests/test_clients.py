@@ -2,7 +2,6 @@ import json
 import re
 import sqlite3
 import uuid
-from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,9 +17,8 @@ from volition.clients import (
     list_clients,
     update_client,
 )
-from volition.config import Defaults, ValidationError
+from volition.config import ValidationError
 from volition.form import parse_invoice_form
-from volition.main import app
 
 ACME = ClientDetails(
     name="Acme Ltd",
@@ -104,12 +102,6 @@ def test_migrations_apply_once_and_record_the_schema_version() -> None:
 
 
 # --- Client form ---
-
-
-@pytest.fixture
-def client() -> Iterator[TestClient]:
-    with TestClient(app) as c:
-        yield c
 
 
 CLIENT_FORM: dict[str, str | list[str]] = {
@@ -246,7 +238,7 @@ def test_with_several_clients_one_must_be_chosen(client: TestClient) -> None:
     assert '<option value="" disabled selected>Choose a client…</option>' in page
     assert " selected>Acme Ltd<" not in page
     by_id = {c["id"]: c for c in client_data(page)}
-    # A client without its own invoice defaults gets defaults.example.json's.
+    # A client without its own invoice defaults gets the global ones.
     assert by_id[plain.id] == {
         "id": plain.id,
         "name": "Plain",
@@ -290,4 +282,4 @@ def test_the_invoice_bills_the_stored_client(client: TestClient) -> None:
     }
     res = client.post("/invoice", data=body)
     assert res.status_code == 200, res.text
-    assert db.next_invoice_number(Defaults(invoice_number_start=1)) == 8
+    assert db.next_invoice_number(1) == 8

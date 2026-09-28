@@ -9,7 +9,6 @@ __pycache__/
 
 # Mounted at runtime, never baked in: the real configs hold bank details.
 config/supplier.json
-config/defaults.json
 data/
 .env
 .claude

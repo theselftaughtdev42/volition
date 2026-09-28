@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Clients · Volition{% endblock %}
+{% block content %}
+  <fieldset>
+    <legend>Clients</legend>
+    {% if clients %}
+    <table>
+      <thead>
+        <tr><th class="label">Name</th><th class="label">Contact</th></tr>
+      </thead>
+      <tbody>
+        {% for client in clients %}
+        <tr>
+          <td><a href="/clients/{{ client.id }}">{{ client.name }}</a></td>
+          <td>{{ client.contact }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No clients yet.</p>
+    {% endif %}
+  </fieldset>
+  <div class="actions">
+    <a class="button" href="/clients/new">+ New client</a>
+  </div>
+{% endblock %}

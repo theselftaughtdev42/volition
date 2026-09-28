@@ -1,6 +1,5 @@
 import json
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -10,13 +9,9 @@ from pypdf import PdfReader
 from fastapi.testclient import TestClient
 from starlette.datastructures import FormData
 
-from volition.config import (
-    Defaults,
-    ValidationError,
-    next_invoice_number,
-    record_invoice_number,
-    validate_invoice,
-)
+from volition.clients import ClientDetails, ClientRecord, create_client
+from volition.config import ValidationError, validate_invoice
+from volition.db import next_invoice_number, record_invoice_number
 from volition.form import parse_invoice_form
 from volition.invoice import Invoice, LineItem, Supplier
 from volition.main import app
@@ -24,13 +19,12 @@ from volition.render import render_html, render_pdf
 
 
 def test_invoice_numbers_start_from_the_configured_int_and_only_move_forward() -> None:
-    defaults = Defaults(invoice_number_start=42)
-    assert next_invoice_number(defaults) == 42
+    assert next_invoice_number(42) == 42
     record_invoice_number(42)
-    assert next_invoice_number(defaults) == 43
+    assert next_invoice_number(42) == 43
     record_invoice_number(10)  # regenerating an old invoice
-    assert next_invoice_number(defaults) == 43
-    assert next_invoice_number(Defaults(invoice_number_start=100)) == 100
+    assert next_invoice_number(42) == 43
+    assert next_invoice_number(100) == 100
 
 
 FORM_BODY: dict[str, str | list[str]] = {
@@ -41,10 +35,7 @@ FORM_BODY: dict[str, str | list[str]] = {
     "periodEnd": "2026-09-30",
     "vat": "on",
     "unit": "days",
-    "clientName": "Example Client Ltd",
-    "clientContact": "",
-    "clientEmail": "",
-    "clientAddress": "1 Example Street\r\nLondon, EC1A 1AA\r\n",
+    "clientId": "c1",
     "description": ["Backend development", "", "Code review"],
     "detail": ["Sprint 14", "", ""],
     "quantity": ["10", "", "1"],
@@ -61,8 +52,16 @@ def form(body: dict[str, str | list[str]]) -> FormData:
     return FormData(form_items(body))
 
 
+EXAMPLE_CLIENT = ClientDetails(name="Example Client Ltd", address=["1 Example Street", "London, EC1A 1AA"])
+CLIENTS = {"c1": ClientRecord(id="c1", **dict(EXAMPLE_CLIENT))}
+
+
+def parse(body: dict[str, str | list[str]]) -> Invoice:
+    return parse_invoice_form(form(body), CLIENTS.get)
+
+
 def test_form_submission_parses_into_a_valid_invoice_skipping_blank_rows() -> None:
-    invoice = parse_invoice_form(form(FORM_BODY))
+    invoice = parse(FORM_BODY)
     assert invoice.model_dump(mode="json", by_alias=True, exclude_none=True) == {
         "number": "MS-0042",
         "issueDate": "2026-09-19",
@@ -79,32 +78,38 @@ def test_form_submission_parses_into_a_valid_invoice_skipping_blank_rows() -> No
 
 def test_an_unticked_vat_box_is_absent_from_the_submission_and_means_no_vat() -> None:
     without_vat = {k: v for k, v in FORM_BODY.items() if k != "vat"}
-    assert parse_invoice_form(form(without_vat)).vat is False
+    assert parse(without_vat).vat is False
 
 
 def test_form_errors_are_reported_together() -> None:
     body = {
         **FORM_BODY,
-        "clientName": "",
+        "clientId": "",
         "quantity": ["", "", "1.5"],
         "rate": ["550", "550", "-1"],
         "periodEnd": "2026-08-01",
     }
     with pytest.raises(ValidationError) as exc:
-        parse_invoice_form(form(body))
+        parse(body)
     assert exc.value.errors == [
         "Line 1: quantity must be a whole number of 1 or more",
         "Line 2: quantity must be a whole number of 1 or more",
         "Line 2: rate must be a whole number of 0 or more",
         "Period start must be on or before its end",
-        "Client name is required",
+        "Choose a client",
     ]
+
+
+def test_an_unknown_client_is_an_error() -> None:
+    with pytest.raises(ValidationError) as exc:
+        parse({**FORM_BODY, "clientId": "deleted"})
+    assert exc.value.errors == ["That client no longer exists; reload the page"]
 
 
 def test_schema_errors_are_reported_with_their_location() -> None:
     with pytest.raises(ValidationError) as exc:
-        parse_invoice_form(form({**FORM_BODY, "clientEmail": "not-an-email", "unit": "weeks"}))
-    assert [e.split(" ")[0] for e in exc.value.errors] == ["/unit", "/client/email"]
+        parse({**FORM_BODY, "unit": "weeks"})
+    assert [e.split(" ")[0] for e in exc.value.errors] == ["/unit"]
 
 
 def test_the_notes_section_only_appears_when_notes_are_given(invoice: Invoice, supplier: Supplier) -> None:
@@ -168,13 +173,6 @@ def test_stored_invoice_json_is_validated(invoice: Invoice) -> None:
 # --- HTTP ---
 
 
-@pytest.fixture
-def client() -> Iterator[TestClient]:
-    # The context manager runs the lifespan.
-    with TestClient(app) as c:
-        yield c
-
-
 def test_health(client: TestClient) -> None:
     res = client.get("/health")
     assert res.status_code == 200
@@ -186,39 +184,39 @@ def test_get_form(client: TestClient) -> None:
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("text/html")
     assert '<form id="invoice" method="post" action="/invoice">' in res.text
-    assert 'value="1"' in res.text  # invoiceNumberStart from defaults.example.json
+    assert 'value="1"' in res.text  # invoiceNumberStart from the saved defaults
     assert "Next in sequence: MS-0001" in res.text
     assert 'value="IT &amp; Software Consultancy Services"' in res.text
     assert '<option value="days" selected>Days</option>' in res.text
 
 
 def test_post_invalid_invoice_returns_422_json(client: TestClient) -> None:
-    body = {**FORM_BODY, "clientName": "", "description": [""], "detail": [""], "quantity": [""]}
+    body = {**FORM_BODY, "clientId": "", "description": [""], "detail": [""], "quantity": [""]}
     res = client.post("/invoice", data=body)
     assert res.status_code == 422
-    assert res.json() == {"errors": ["Add at least one line item", "Client name is required"]}
+    assert res.json() == {"errors": ["Add at least one line item", "Choose a client"]}
 
 
-def test_post_valid_invoice_returns_pdf_and_advances_counter(client: TestClient, isolated_dirs: Path) -> None:
-    res = client.post("/invoice", data=FORM_BODY)
+def test_post_valid_invoice_returns_pdf_and_advances_counter(client: TestClient) -> None:
+    stored = create_client(EXAMPLE_CLIENT)
+    res = client.post("/invoice", data={**FORM_BODY, "clientId": stored.id})
     assert res.status_code == 200, res.text
     assert res.headers["content-type"] == "application/pdf"
     assert res.headers["content-disposition"] == 'inline; filename="MS-0042.pdf"'
     assert res.content.startswith(b"%PDF")
-    state = json.loads((isolated_dirs / "data/state.json").read_text())
-    assert state == {"lastInvoiceNumber": 42}
     assert "Next in sequence: MS-0043" in client.get("/").text
 
 
 def test_invalid_config_is_a_422_on_request(client: TestClient, isolated_dirs: Path) -> None:
-    (isolated_dirs / "config/defaults.json").write_text('{"invoiceNumberStart": 0}')
+    supplier = json.loads((isolated_dirs / "config/supplier.json").read_text())
+    (isolated_dirs / "config/supplier.json").write_text(json.dumps({**supplier, "paymentTermsDays": "30"}))
     res = client.get("/")
     assert res.status_code == 422
-    assert res.json()["errors"][0].startswith("/invoiceNumberStart ")
+    assert res.json()["errors"][0].startswith("/paymentTermsDays ")
 
 
 def test_unexpected_errors_are_json_500s(client: TestClient, isolated_dirs: Path) -> None:
-    (isolated_dirs / "config/defaults.json").unlink()
+    (isolated_dirs / "config/supplier.json").unlink()
     res = client.get("/")
     assert res.status_code == 500
     assert res.json()["errors"][0].startswith("Missing ")

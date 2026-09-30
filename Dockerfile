@@ -25,7 +25,6 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
     PORT=3000 \
-    CONFIG_DIR=/config \
     DATA_DIR=/data
 
 EXPOSE 3000

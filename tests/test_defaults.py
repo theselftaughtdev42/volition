@@ -6,13 +6,14 @@ from fastapi.testclient import TestClient
 
 from volition.clients import ClientLineItem
 from volition.defaults import Defaults, load_defaults, save_defaults
+from volition.invoice import Supplier
 from volition.main import app
 
 
 @pytest.fixture
-def first_run() -> Iterator[TestClient]:
-    """An app whose database has no defaults yet."""
-    with TestClient(app) as c:
+def first_run(supplier: Supplier) -> Iterator[TestClient]:
+    """An app whose database has the supplier but no defaults yet."""
+    with TestClient(app, base_url="http://localhost") as c:
         yield c
 
 
@@ -43,7 +44,7 @@ def test_pages_redirect_to_the_defaults_form_on_the_first_run(first_run: TestCli
 
 def test_the_first_run_form_suggests_starting_values(first_run: TestClient) -> None:
     page = first_run.get("/defaults").text
-    assert "Welcome." in page and "Save and continue" in page and "Cancel" not in page
+    assert "Next, set the defaults" in page and "Save and continue" in page and "Cancel" not in page
     assert 'name="invoiceNumberStart" type="number" min="1" step="1" required value="1"' in page
     assert '<option value="days" selected>Days</option>' in page
     assert 'name="vat" type="checkbox" checked' in page
@@ -87,7 +88,7 @@ def test_schema_errors_on_the_defaults_form_are_reported(first_run: TestClient) 
 
 def test_editing_the_saved_defaults(client: TestClient, defaults: Defaults) -> None:
     page = client.get("/defaults").text
-    assert "Welcome." not in page and '<a href="/">Cancel</a>' in page
+    assert "Next, set the defaults" not in page and '<a href="/">Cancel</a>' in page
     assert 'value="IT &amp; Software Consultancy Services"' in page
     res = client.post("/defaults", data={**DEFAULTS_FORM, "vat": "on"}, follow_redirects=False)
     assert res.status_code == 303

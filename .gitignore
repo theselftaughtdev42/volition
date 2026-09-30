@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 .pytest_cache/
+# Left over from when the supplier was a config file, not the database: it holds bank details.
 config/supplier.json
 data/
 .env

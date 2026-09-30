@@ -1,4 +1,4 @@
-"""The invoice, client and defaults forms: values for rendering them, and parsing submissions."""
+"""The invoice, client, defaults and supplier forms: values for rendering them, and parsing submissions."""
 
 import json
 import math
@@ -300,6 +300,91 @@ def parse_defaults_form(body: FormBody) -> Defaults:
     return _validate_form(Defaults, defaults, "defaults")
 
 
+_SUPPLIER_FIELDS = [
+    "name",
+    "legalName",
+    "address",
+    "website",
+    "email",
+    "companyNumber",
+    "registeredIn",
+    "vatNumber",
+    "paymentTermsDays",
+    "bankName",
+    "accountName",
+    "sortCode",
+    "accountNumber",
+]
+
+
+def supplier_form_values(supplier: Supplier | None = None) -> dict[str, Any]:
+    """Values for the supplier form: the stored supplier, or starting suggestions on the first run.
+
+    The bank details are flattened into the form alongside everything else.
+    """
+    if supplier is None:
+        return {"paymentTermsDays": 30}
+    data = supplier.model_dump(by_alias=True, exclude_none=True)
+    return {**data, **data.pop("bank"), "address": "\n".join(supplier.address)}
+
+
+def submitted_supplier_values(body: FormBody) -> dict[str, Any]:
+    """A supplier form submission as values for re-rendering it alongside its errors."""
+    return {key: _one(body, key) for key in _SUPPLIER_FIELDS}
+
+
+def _digits(value: str) -> str:
+    """Bank numbers as people type them, e.g. "12-34-56" or "1234 5678", without the separators."""
+    return re.sub(r"[\s-]", "", value)
+
+
+def parse_supplier_form(body: FormBody) -> Supplier:
+    """Turns a supplier form submission into a valid Supplier, or raises ValidationError."""
+    errors: list[str] = []
+    required = {
+        "name": "Trading name",
+        "legalName": "Legal name",
+        "email": "Email",
+        "companyNumber": "Company number",
+        "registeredIn": "Registered in",
+        "bankName": "Bank",
+        "accountName": "Account name",
+    }
+    for key, label in required.items():
+        if not _one(body, key):
+            errors.append(f"{label} is required")
+    if not _lines(_one(body, "address")):
+        errors.append("Address is required")
+    terms = _whole_number(_one(body, "paymentTermsDays"), "Payment terms", 0, errors)
+    sort_code = _digits(_one(body, "sortCode"))
+    if not re.fullmatch(r"[0-9]{6}", sort_code):
+        errors.append("Sort code must be 6 digits")
+    account_number = _digits(_one(body, "accountNumber"))
+    if not re.fullmatch(r"[0-9]{8}", account_number):
+        errors.append("Account number must be 8 digits")
+    if errors:
+        raise ValidationError("supplier", errors)
+
+    supplier = {
+        "name": _one(body, "name"),
+        "legalName": _one(body, "legalName"),
+        "address": _lines(_one(body, "address")),
+        "website": _one(body, "website") or None,
+        "email": _one(body, "email"),
+        "companyNumber": _one(body, "companyNumber"),
+        "registeredIn": _one(body, "registeredIn"),
+        "vatNumber": _one(body, "vatNumber") or None,
+        "paymentTermsDays": terms,
+        "bank": {
+            "bankName": _one(body, "bankName"),
+            "accountName": _one(body, "accountName"),
+            "sortCode": "-".join(sort_code[i : i + 2] for i in range(0, 6, 2)),
+            "accountNumber": account_number,
+        },
+    }
+    return _validate_form(Supplier, supplier, "supplier")
+
+
 def render_clients(supplier: Supplier, clients: list[ClientRecord]) -> str:
     return templates.get_template("clients.html").render(
         page="clients",
@@ -328,6 +413,19 @@ def render_defaults_form(
         page="defaults",
         supplier=supplier.model_dump(by_alias=True, exclude_none=True),
         vatPercent=VAT_PERCENT,
+        values=values,
+        first_run=first_run,
+        errors=errors or [],
+    )
+
+
+def render_supplier_form(
+    supplier: Supplier | None, values: dict[str, Any], first_run: bool, errors: list[str] | None = None
+) -> str:
+    """`supplier` is the stored one (None on the first run), for the header; `values` are what the form shows."""
+    return templates.get_template("supplier.html").render(
+        page="supplier",
+        supplier=supplier and supplier.model_dump(by_alias=True, exclude_none=True),
         values=values,
         first_run=first_run,
         errors=errors or [],

@@ -7,8 +7,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Mounted at runtime, never baked in: the real configs hold bank details.
-config/supplier.json
+# Never baked in: the database holds bank details.
 data/
 .env
 .claude

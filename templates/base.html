@@ -108,9 +108,10 @@
         <a href="/" {% if page == "invoice" %}aria-current="page"{% endif %}>Invoice</a>
         <a href="/clients" {% if page == "clients" %}aria-current="page"{% endif %}>Clients</a>
         <a href="/defaults" {% if page == "defaults" %}aria-current="page"{% endif %}>Defaults</a>
+        <a href="/supplier" {% if page == "supplier" %}aria-current="page"{% endif %}>Supplier</a>
       </nav>
     </div>
-    <span class="label">{{ supplier.legalName }}</span>
+    {% if supplier %}<span class="label">{{ supplier.legalName }}</span>{% endif %}
   </header>
 {% block content %}{% endblock %}
 </main>

@@ -8,8 +8,6 @@ Requires Python 3.14, [uv](https://docs.astral.sh/uv/) and Pango, which [WeasyPr
 
 ```sh
 make install
-cp config/supplier.example.json config/supplier.json
-# edit it, then:
 make start      # http://127.0.0.1:3000, honours HOST and PORT
 ```
 
@@ -17,10 +15,10 @@ Also: `make dev`, `make test`, `make lint`, `make format`.
 
 ## Docker
 
-The image listens on port 3000, reading config from `/config` and keeping its database (defaults, clients and the invoice counter) in `/data`. Mount both: config holds bank details and is never baked into the image.
+The image listens on port 3000 and keeps its database (supplier, defaults, clients and the invoice counter) in `/data`. Mount it: the database holds bank details and is never baked into the image.
 
 ```sh
-make docker.build && make docker.run    # mounts ./config read-only and ./data
+make docker.build && make docker.run    # mounts ./data
 ```
 
 Pushing a `v*` tag publishes `ghcr.io/theselftaughtdev42/volition` (see `.github/workflows/publish.yml`). `GET /health` backs the container healthcheck.
@@ -29,9 +27,14 @@ To cut a release, run `make release BUMP=patch` (or `minor`/`major`, or `V=1.2.3
 
 ## Configuration
 
-`config/supplier.json` holds the company, address, registration, bank details and payment terms. It is not editable from the app, and is validated against `Supplier` in `volition/invoice.py` at startup and on every request, so edits apply without a restart.
+Everything lives in the database. On the first run every page redirects to ask for it:
 
-Everything else lives in the database. On the first run (no defaults saved yet) every page redirects to `/defaults`, which asks for the invoice defaults: the first invoice number, whether VAT is ticked, unit, line items (description, detail, rate), and notes. They can be changed there later, and are used where the chosen client sets none.
+1. `/supplier`: who invoices are from. The trading and legal names, address, email, website, company number and where it is registered, VAT number, payment terms and bank details, all printed on each invoice.
+2. `/defaults`: the invoice defaults. The first invoice number, whether VAT is ticked, unit, line items (description, detail, rate), and notes. They are used where the chosen client sets none.
+
+Both can be changed on those pages later.
+
+There is no login, so anyone who can reach the port can use the app. Form posts from other websites are rejected (by `Sec-Fetch-Site`, else `Origin`), so a page you visit can't change the bank details behind your back, and requests for hostnames outside `ALLOWED_HOSTS` are refused.
 
 Invoice numbers are `MS-` plus a zero-padded integer. The form suggests the next one: the first invoice number from the defaults, then the last generated number + 1. The number can be overridden; regenerating an older invoice never winds the counter back. Raising the first invoice number above the counter jumps ahead.
 
@@ -51,8 +54,8 @@ The schema is migrated on startup (see `MIGRATIONS` in `volition/db.py`, tracked
 | --- | --- | --- |
 | `PORT` | `3000` | Used by `python -m volition` (and `fastapi dev`/`run`, whose own default is 8000). |
 | `HOST` | `127.0.0.1` | Used by `python -m volition`. Set `0.0.0.0` to listen beyond localhost. |
-| `CONFIG_DIR` | `./config` | |
-| `DATA_DIR` | `./data` | Holds `volition.db` (SQLite: defaults, clients and the last invoice number). Persist it across deploys. |
+| `ALLOWED_HOSTS` | `127.0.0.1,localhost,[::1]` | Comma-separated hostnames the app answers to; other `Host` headers get a 400 (guarding against DNS rebinding). Add yours when serving under a domain name or LAN address, or `*` to allow any. Read at startup. |
+| `DATA_DIR` | `./data` | Holds `volition.db` (SQLite: supplier, defaults, clients and the last invoice number). Persist it across deploys. |
 
 ## Invoice rules
 

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Supplier · Volition{% endblock %}
+{% block content %}
+  <form id="supplier" method="post" action="/supplier">
+    {% if first_run %}
+    <p class="intro">Welcome. First, who are invoices from? Everything here is printed on each invoice; you can change it on this page later.</p>
+    {% endif %}
+    <fieldset>
+      <legend>Company</legend>
+      <div class="grid">
+        <label><span class="label">Trading name</span>
+          <input name="name" required value="{{ values.name }}">
+        </label>
+        <label><span class="label">Legal name</span>
+          <input name="legalName" required value="{{ values.legalName }}">
+        </label>
+        <label><span class="label">Email</span>
+          <input name="email" type="email" required value="{{ values.email }}">
+        </label>
+        <label><span class="label">Website</span>
+          <input name="website" value="{{ values.website }}">
+        </label>
+        <label class="wide"><span class="label">Address</span>
+          <textarea name="address" rows="3" required>{{ values.address }}</textarea>
+          <span class="hint">One line per row</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Registration</legend>
+      <div class="grid">
+        <label><span class="label">Company number</span>
+          <input name="companyNumber" required value="{{ values.companyNumber }}">
+        </label>
+        <label><span class="label">Registered in</span>
+          <input name="registeredIn" required value="{{ values.registeredIn }}" placeholder="England & Wales">
+        </label>
+        <label><span class="label">VAT number</span>
+          <input name="vatNumber" value="{{ values.vatNumber }}">
+          <span class="hint">Printed on invoices that charge VAT</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Payment</legend>
+      <div class="grid">
+        <label><span class="label">Payment terms</span>
+          <span class="prefixed"><input name="paymentTermsDays" type="number" min="0" step="1" required value="{{ values.paymentTermsDays }}"> days</span>
+          <span class="hint">Due date when an invoice sets none</span>
+        </label>
+        <label><span class="label">Bank</span>
+          <input name="bankName" required value="{{ values.bankName }}" placeholder="Monzo">
+        </label>
+        <label><span class="label">Account name</span>
+          <input name="accountName" required value="{{ values.accountName }}">
+        </label>
+        <label><span class="label">Sort code</span>
+          <input name="sortCode" required inputmode="numeric" value="{{ values.sortCode }}" placeholder="00-00-00">
+        </label>
+        <label><span class="label">Account number</span>
+          <input name="accountNumber" required inputmode="numeric" value="{{ values.accountNumber }}" placeholder="00000000">
+        </label>
+      </div>
+    </fieldset>
+
+    {% if errors %}
+    <ul class="errors" role="alert">
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="actions">
+      <button type="submit" class="primary">{{ "Save and continue" if first_run else "Save" }}</button>
+      {% if not first_run %}<a href="/">Cancel</a>{% endif %}
+    </div>
+  </form>
+{% endblock %}

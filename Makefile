@@ -54,7 +54,7 @@ docker.build:
 	docker build -t volition:local .
 
 docker.run:
-	docker run --rm --name volition -p 127.0.0.1:3000:3000 -v "${PWD}/config:/config:ro" -v "${PWD}/data:/data" volition:local
+	docker run --rm --name volition -p 127.0.0.1:3000:3000 -v "${PWD}/data:/data" volition:local
 
 docker.latest:
-	docker run --rm --name volition --platform linux/amd64 -p 127.0.0.1:3000:3000 -v "${PWD}/config:/config:ro" -v "${PWD}/data:/data" ghcr.io/theselftaughtdev42/volition:latest
+	docker run --rm --name volition --platform linux/amd64 -p 127.0.0.1:3000:3000 -v "${PWD}/data:/data" ghcr.io/theselftaughtdev42/volition:latest

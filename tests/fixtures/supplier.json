@@ -12,5 +12,5 @@
   "registeredIn": "England & Wales",
   "vatNumber": "GB 459 3303 82",
   "paymentTermsDays": 30,
-  "bank": { "accountName": "Mackay Software Limited", "sortCode": "00-00-00", "accountNumber": "00000000" }
+  "bank": { "bankName": "Monzo", "accountName": "Mackay Software Limited", "sortCode": "00-00-00", "accountNumber": "00000000" }
 }

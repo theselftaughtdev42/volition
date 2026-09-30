@@ -2,7 +2,6 @@ import json
 import re
 from dataclasses import dataclass
 from io import BytesIO
-from pathlib import Path
 
 import pytest
 from pypdf import PdfReader
@@ -10,12 +9,12 @@ from fastapi.testclient import TestClient
 from starlette.datastructures import FormData
 
 from volition.clients import ClientDetails, ClientRecord, create_client
-from volition.config import ValidationError, validate_invoice
+from volition.config import ValidationError, allowed_hosts, validate_invoice
 from volition.db import next_invoice_number, record_invoice_number
 from volition.form import parse_invoice_form
 from volition.invoice import Invoice, LineItem, Supplier
-from volition.main import app
 from volition.render import render_html, render_pdf
+from volition.supplier import load_supplier
 
 
 def test_invoice_numbers_start_from_the_configured_int_and_only_move_forward() -> None:
@@ -207,29 +206,81 @@ def test_post_valid_invoice_returns_pdf_and_advances_counter(client: TestClient)
     assert "Next in sequence: MS-0043" in client.get("/").text
 
 
-def test_invalid_config_is_a_422_on_request(client: TestClient, isolated_dirs: Path) -> None:
-    supplier = json.loads((isolated_dirs / "config/supplier.json").read_text())
-    (isolated_dirs / "config/supplier.json").write_text(json.dumps({**supplier, "paymentTermsDays": "30"}))
-    res = client.get("/")
-    assert res.status_code == 422
-    assert res.json()["errors"][0].startswith("/paymentTermsDays ")
+def test_unexpected_errors_are_json_500s(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken() -> None:
+        raise RuntimeError("database is locked")
 
-
-def test_unexpected_errors_are_json_500s(client: TestClient, isolated_dirs: Path) -> None:
-    (isolated_dirs / "config/supplier.json").unlink()
+    monkeypatch.setattr("volition.main.list_clients", broken)
     res = client.get("/")
     assert res.status_code == 500
-    assert res.json()["errors"][0].startswith("Missing ")
+    assert res.json() == {"errors": ["database is locked"]}
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Sec-Fetch-Site": "cross-site"},
+        {"Sec-Fetch-Site": "same-site"},
+        {"Origin": "https://evil.example"},
+        {"Origin": "null"},
+        # Sec-Fetch-Site wins over a matching Origin.
+        {"Sec-Fetch-Site": "cross-site", "Origin": "http://localhost"},
+    ],
+)
+def test_cross_origin_posts_are_rejected(client: TestClient, supplier: Supplier, headers: dict[str, str]) -> None:
+    res = client.post("/supplier", data={"sortCode": "12-34-56"}, headers=headers, follow_redirects=False)
+    assert res.status_code == 403
+    assert res.json() == {"errors": ["Cross-origin request rejected"]}
+    assert load_supplier() == supplier
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"Sec-Fetch-Site": "same-origin"}, {"Sec-Fetch-Site": "none"}, {"Origin": "http://localhost"}],
+)
+def test_same_origin_and_non_browser_posts_are_allowed(client: TestClient, headers: dict[str, str]) -> None:
+    res = client.post("/clients/missing/delete", headers=headers, follow_redirects=False)
+    assert res.status_code == 404
+
+
+def test_cross_origin_gets_are_allowed(client: TestClient) -> None:
+    assert client.get("/", headers={"Sec-Fetch-Site": "cross-site"}).status_code == 200
+
+
+@pytest.mark.parametrize("host", ["localhost", "127.0.0.1:3000", "[::1]:3000"])
+def test_local_hosts_are_allowed(client: TestClient, host: str) -> None:
+    assert client.get("/health", headers={"Host": host}).status_code == 200
+
+
+def test_other_hosts_are_rejected(client: TestClient, supplier: Supplier) -> None:
+    """A DNS-rebound page is same-origin to the browser, so only the Host header gives it away."""
+    headers = {"Host": "evil.example:3000", "Sec-Fetch-Site": "same-origin", "Origin": "http://evil.example:3000"}
+    assert client.get("/", headers=headers).status_code == 400
+    res = client.post("/supplier", data={"sortCode": "12-34-56"}, headers=headers)
+    assert res.status_code == 400
+    assert load_supplier() == supplier
+
+
+@pytest.mark.parametrize(
+    ("env", "hosts"),
+    [
+        (None, ["127.0.0.1", "localhost", "[::1]"]),
+        ("", ["127.0.0.1", "localhost", "[::1]"]),
+        (" Invoices.example.com , localhost,", ["invoices.example.com", "localhost"]),
+        ("*", ["*"]),
+    ],
+)
+def test_allowed_hosts_come_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, env: str | None, hosts: list[str]
+) -> None:
+    if env is None:
+        monkeypatch.delenv("ALLOWED_HOSTS", raising=False)
+    else:
+        monkeypatch.setenv("ALLOWED_HOSTS", env)
+    assert allowed_hosts() == hosts
 
 
 def test_assets_are_served(client: TestClient) -> None:
     res = client.get("/assets/ms-mark.svg")
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("image/svg+xml")
-
-
-def test_startup_fails_fast_on_bad_config(isolated_dirs: Path) -> None:
-    (isolated_dirs / "config/supplier.json").write_text("{}")
-    with pytest.raises(ValidationError):
-        with TestClient(app):
-            pass

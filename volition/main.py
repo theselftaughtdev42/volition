@@ -1,21 +1,24 @@
 """HTTP server: GET / serves the invoice form, POST /invoice returns the PDF, /clients manages clients.
 
-Until the invoice defaults have been saved (the first run), the pages redirect to /defaults to ask for them.
+On the first run the pages redirect to ask for what invoices need: the supplier (/supplier), then the invoice
+defaults (/defaults).
 """
 
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import FormData
 
 from volition import db
 from volition.clients import create_client, delete_client, get_client, list_clients, update_client
-from volition.config import ROOT, ValidationError, load_supplier
+from volition.config import ROOT, ValidationError, allowed_hosts
 from volition.defaults import Defaults, load_defaults, save_defaults
 from volition.form import (
     client_form_values,
@@ -23,43 +26,62 @@ from volition.form import (
     parse_client_form,
     parse_defaults_form,
     parse_invoice_form,
+    parse_supplier_form,
     render_client_form,
     render_clients,
     render_defaults_form,
     render_form,
+    render_supplier_form,
     submitted_client_values,
     submitted_defaults_values,
+    submitted_supplier_values,
+    supplier_form_values,
 )
 from volition.invoice import Supplier, parse_invoice_number
 from volition.render import render_pdf
+from volition.supplier import load_supplier, save_supplier
 
 logger = logging.getLogger("volition")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Fail fast on missing or invalid config rather than on the first request.
-    load_supplier()
+    # Fail fast on a database that can't be migrated rather than on the first request.
     db.migrate()
     yield
 
 
 app = FastAPI(title="Volition", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+# Read once, at import: restart to change ALLOWED_HOSTS.
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts(), www_redirect=False)
 
 
-class DefaultsNotSet(Exception):
-    pass
+class SetupIncomplete(Exception):
+    """Something the first run asks for hasn't been saved yet; `path` is the page that asks for it."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
 
 
-def require_defaults() -> Defaults:
+def require_supplier() -> Supplier:
+    supplier = load_supplier()
+    if supplier is None:
+        raise SetupIncomplete("/supplier")
+    return supplier
+
+
+SupplierDep = Annotated[Supplier, Depends(require_supplier)]
+
+
+def require_defaults(_: SupplierDep) -> Defaults:
+    """Also requires the supplier, so the first run asks for that first."""
     defaults = load_defaults()
     if defaults is None:
-        raise DefaultsNotSet
+        raise SetupIncomplete("/defaults")
     return defaults
 
 
 DefaultsDep = Annotated[Defaults, Depends(require_defaults)]
-SupplierDep = Annotated[Supplier, Depends(load_supplier)]
 #: For pages that don't use the defaults but shouldn't be reached before they're set.
 NEEDS_DEFAULTS = [Depends(require_defaults)]
 
@@ -165,12 +187,30 @@ def set_defaults(form: FormDep, supplier: SupplierDep) -> Response:
     return RedirectResponse("/", status_code=303)
 
 
+@app.get("/supplier", response_class=HTMLResponse)
+def supplier_form() -> HTMLResponse:
+    supplier = load_supplier()
+    return HTMLResponse(render_supplier_form(supplier, supplier_form_values(supplier), first_run=supplier is None))
+
+
+@app.post("/supplier", response_model=None)
+def set_supplier(form: FormDep) -> Response:
+    try:
+        save_supplier(parse_supplier_form(form))
+    except ValidationError as e:
+        supplier = load_supplier()
+        html = render_supplier_form(supplier, submitted_supplier_values(form), supplier is None, e.errors)
+        return HTMLResponse(html, status_code=422)
+    # On the first run, / then redirects on to the defaults.
+    return RedirectResponse("/", status_code=303)
+
+
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
 
-@app.exception_handler(DefaultsNotSet)
-def defaults_not_set(request: Request, exc: DefaultsNotSet) -> RedirectResponse:
-    return RedirectResponse("/defaults", status_code=303)
+@app.exception_handler(SetupIncomplete)
+def setup_incomplete(request: Request, exc: SetupIncomplete) -> RedirectResponse:
+    return RedirectResponse(exc.path, status_code=303)
 
 
 @app.exception_handler(ValidationError)
@@ -179,6 +219,30 @@ def validation_error(request: Request, exc: ValidationError) -> JSONResponse:
 
 
 type CallNext = Callable[[Request], Awaitable[Response]]
+
+
+def _is_cross_origin(request: Request) -> bool:
+    """Whether a browser sent this request from another site, e.g. a page posting a form to 127.0.0.1.
+
+    Sec-Fetch-Site is trusted when present ("none" is the user typing the URL or using a bookmark).
+    Otherwise Origin must match Host. Requests with neither come from curl, scripts or old browsers
+    that wouldn't let a page forge them, so they are allowed.
+    """
+    site = request.headers.get("sec-fetch-site")
+    if site is not None:
+        return site not in ("same-origin", "none")
+    origin = request.headers.get("origin")
+    if origin is None:
+        return False
+    return urlsplit(origin).netloc != request.headers.get("host")
+
+
+@app.middleware("http")
+async def reject_cross_origin_writes(request: Request, call_next: CallNext) -> Response:
+    """Guards against CSRF: without it any website could post forms here, e.g. to change the bank details."""
+    if request.method not in ("GET", "HEAD", "OPTIONS") and _is_cross_origin(request):
+        return JSONResponse({"errors": ["Cross-origin request rejected"]}, status_code=403)
+    return await call_next(request)
 
 
 @app.middleware("http")

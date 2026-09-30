@@ -7,8 +7,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Never baked in: these hold bank details (config/ is left over from before the database).
-config/
+# Never baked in: the database holds bank details.
 data/
 .env
 .claude

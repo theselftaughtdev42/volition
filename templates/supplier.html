@@ -50,6 +50,9 @@
           <span class="prefixed"><input name="paymentTermsDays" type="number" min="0" step="1" required value="{{ values.paymentTermsDays }}"> days</span>
           <span class="hint">Due date when an invoice sets none</span>
         </label>
+        <label><span class="label">Bank</span>
+          <input name="bankName" required value="{{ values.bankName }}" placeholder="Monzo">
+        </label>
         <label><span class="label">Account name</span>
           <input name="accountName" required value="{{ values.accountName }}">
         </label>

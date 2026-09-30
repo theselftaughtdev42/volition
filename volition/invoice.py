@@ -64,6 +64,8 @@ class Invoice(Model):
 
 
 class BankDetails(Model):
+    #: The bank itself, e.g. "Monzo".
+    bank_name: str
     account_name: str
     sort_code: Annotated[str, Field(pattern=r"^[0-9]{2}-[0-9]{2}-[0-9]{2}$")]
     account_number: Annotated[str, Field(pattern=r"^[0-9]{8}$")]

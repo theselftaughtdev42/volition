@@ -310,6 +310,7 @@ _SUPPLIER_FIELDS = [
     "registeredIn",
     "vatNumber",
     "paymentTermsDays",
+    "bankName",
     "accountName",
     "sortCode",
     "accountNumber",
@@ -346,6 +347,7 @@ def parse_supplier_form(body: FormBody) -> Supplier:
         "email": "Email",
         "companyNumber": "Company number",
         "registeredIn": "Registered in",
+        "bankName": "Bank",
         "accountName": "Account name",
     }
     for key, label in required.items():
@@ -374,6 +376,7 @@ def parse_supplier_form(body: FormBody) -> Supplier:
         "vatNumber": _one(body, "vatNumber") or None,
         "paymentTermsDays": terms,
         "bank": {
+            "bankName": _one(body, "bankName"),
             "accountName": _one(body, "accountName"),
             "sortCode": "-".join(sort_code[i : i + 2] for i in range(0, 6, 2)),
             "accountNumber": account_number,

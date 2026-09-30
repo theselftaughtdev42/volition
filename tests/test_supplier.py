@@ -27,6 +27,7 @@ SUPPLIER_FORM = {
     "registeredIn": "England & Wales",
     "vatNumber": "",
     "paymentTermsDays": "14",
+    "bankName": "Monzo",
     "accountName": "Acme Ltd",
     "sortCode": "12 34 56",
     "accountNumber": "1234 5678",
@@ -65,16 +66,24 @@ def test_saving_the_supplier_continues_to_the_defaults(first_run: TestClient) ->
         company_number="123",
         registered_in="England & Wales",
         payment_terms_days=14,
-        bank=BankDetails(account_name="Acme Ltd", sort_code="12-34-56", account_number="12345678"),
+        bank=BankDetails(bank_name="Monzo", account_name="Acme Ltd", sort_code="12-34-56", account_number="12345678"),
     )
 
 
 def test_an_invalid_supplier_form_is_re_rendered_with_its_errors_and_values(first_run: TestClient) -> None:
-    body = {**SUPPLIER_FORM, "legalName": "", "address": " ", "paymentTermsDays": "-1", "sortCode": "12-34"}
+    body = {
+        **SUPPLIER_FORM,
+        "legalName": "",
+        "bankName": "",
+        "address": " ",
+        "paymentTermsDays": "-1",
+        "sortCode": "12-34",
+    }
     res = first_run.post("/supplier", data=body)
     assert res.status_code == 422
     assert re.findall(r"<li>(.*?)</li>", res.text) == [
         "Legal name is required",
+        "Bank is required",
         "Address is required",
         "Payment terms must be a whole number of 0 or more",
         "Sort code must be 6 digits",

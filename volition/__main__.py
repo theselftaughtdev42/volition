@@ -7,7 +7,7 @@ import uvicorn
 
 def main() -> None:
     uvicorn.run(
-        "volition.main:app",
+        "volition.web.app:app",
         host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", "3000")),
     )

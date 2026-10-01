@@ -4,17 +4,18 @@ from dataclasses import dataclass
 from io import BytesIO
 
 import pytest
-from pypdf import PdfReader
 from fastapi.testclient import TestClient
+from pypdf import PdfReader
 from starlette.datastructures import FormData
 
-from volition.clients import ClientDetails, ClientRecord, create_client
-from volition.config import ValidationError, allowed_hosts, validate_invoice
-from volition.db import next_invoice_number, record_invoice_number
-from volition.form import parse_invoice_form
-from volition.invoice import Invoice, LineItem, Supplier
-from volition.render import render_html, render_pdf
-from volition.supplier import load_supplier
+from volition.config import allowed_hosts
+from volition.errors import ValidationError, validate
+from volition.models import ClientDetails, ClientRecord, Invoice, LineItem, Supplier
+from volition.pdf import render_html, render_pdf
+from volition.store.clients import create_client
+from volition.store.invoice_numbers import next_invoice_number, record_invoice_number
+from volition.store.supplier import load_supplier
+from volition.web.pages.invoice import parse_invoice_form
 
 
 def test_invoice_numbers_start_from_the_configured_int_and_only_move_forward() -> None:
@@ -161,9 +162,9 @@ def test_a_25_line_invoice_paginates_beyond_the_first_page(invoice: Invoice, sup
 
 def test_stored_invoice_json_is_validated(invoice: Invoice) -> None:
     data = invoice.model_dump(mode="json", by_alias=True, exclude_none=True)
-    assert validate_invoice(json.dumps(data)) == invoice
+    assert validate(Invoice, json.dumps(data), "invoice") == invoice
     with pytest.raises(ValidationError) as exc:
-        validate_invoice(json.dumps({**data, "number": "MS-42", "lineItems": [], "extra": 1}))
+        validate(Invoice, json.dumps({**data, "number": "MS-42", "lineItems": [], "extra": 1}), "invoice")
     assert any(e.startswith("/number ") for e in exc.value.errors)
     assert any(e.startswith("/lineItems ") for e in exc.value.errors)
     assert any(e.startswith("/extra ") for e in exc.value.errors)
@@ -210,7 +211,7 @@ def test_unexpected_errors_are_json_500s(client: TestClient, monkeypatch: pytest
     def broken() -> None:
         raise RuntimeError("database is locked")
 
-    monkeypatch.setattr("volition.main.list_clients", broken)
+    monkeypatch.setattr("volition.web.pages.invoice.list_clients", broken)
     res = client.get("/")
     assert res.status_code == 500
     assert res.json() == {"errors": ["database is locked"]}

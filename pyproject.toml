@@ -21,7 +21,7 @@ dev = [
 ]
 
 [tool.fastapi]
-entrypoint = "volition.main:app"
+entrypoint = "volition.web.app:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

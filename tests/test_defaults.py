@@ -4,10 +4,9 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from volition.clients import ClientLineItem
-from volition.defaults import Defaults, load_defaults, save_defaults
-from volition.invoice import Supplier
-from volition.main import app
+from volition.models import Defaults, PresetLineItem, Supplier
+from volition.store.defaults import load_defaults, save_defaults
+from volition.web.app import app
 
 
 @pytest.fixture
@@ -29,7 +28,7 @@ DEFAULTS_FORM: dict[str, str | list[str]] = {
 
 def test_defaults_round_trip_and_are_none_until_saved() -> None:
     assert load_defaults() is None
-    defaults = Defaults(invoice_number_start=5, vat=False, unit="items", line_items=[ClientLineItem(description="x")])
+    defaults = Defaults(invoice_number_start=5, vat=False, unit="items", line_items=[PresetLineItem(description="x")])
     save_defaults(defaults)
     assert load_defaults() == defaults
     save_defaults(defaults.model_copy(update={"notes": "later"}))
@@ -58,8 +57,8 @@ def test_saving_the_defaults_continues_to_the_invoice_form(first_run: TestClient
         vat=False,  # unticked, so absent from the submission
         unit="hours",
         line_items=[
-            ClientLineItem(description="Consultancy", detail="Remote", rate=80),
-            ClientLineItem(description="Travel"),
+            PresetLineItem(description="Consultancy", detail="Remote", rate=80),
+            PresetLineItem(description="Travel"),
         ],
         notes="Thanks",
     )

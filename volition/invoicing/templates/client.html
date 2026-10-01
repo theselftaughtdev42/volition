@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ values.name if client_id else "New client" }} · Volition{% endblock %}
+{% block content %}
+  <form id="client" method="post" action="{{ '/clients/' ~ client_id if client_id else '/clients' }}">
+    <fieldset>
+      <legend>{{ "Client" if client_id else "New client" }}</legend>
+      <div class="grid">
+        <label><span class="label">Name</span>
+          <input name="name" required value="{{ values.name }}">
+        </label>
+        <label><span class="label">Contact</span>
+          <input name="contact" value="{{ values.contact }}">
+        </label>
+        <label><span class="label">Email</span>
+          <input name="email" type="email" value="{{ values.email }}">
+        </label>
+        <label class="wide"><span class="label">Address</span>
+          <textarea name="address" rows="3" required>{{ values.address }}</textarea>
+          <span class="hint">One line per row</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Invoice defaults</legend>
+      <div class="grid" style="margin-bottom: var(--space-4)">
+        <label><span class="label">Unit</span>
+          <select name="unit">
+            <option value="" {% if not values.unit %}selected{% endif %}>Default</option>
+            <option value="days" {% if values.unit == "days" %}selected{% endif %}>Days</option>
+            <option value="hours" {% if values.unit == "hours" %}selected{% endif %}>Hours</option>
+            <option value="items" {% if values.unit == "items" %}selected{% endif %}>Items</option>
+          </select>
+        </label>
+        <label><span class="label">VAT ({{ vatPercent }}%)</span>
+          <select name="vat">
+            <option value="" {% if not values.vat %}selected{% endif %}>Default</option>
+            <option value="yes" {% if values.vat == "yes" %}selected{% endif %}>Charge VAT</option>
+            <option value="no" {% if values.vat == "no" %}selected{% endif %}>No VAT</option>
+          </select>
+        </label>
+      </div>
+{% include "invoicing/_preset_lines.html" %}
+      <p class="hint">Default = as set on the <a href="/defaults">Defaults</a> page. Quantities are entered on each invoice.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <label>
+        <textarea name="notes" rows="2" placeholder="Blank = default notes" aria-label="Notes">{{ values.notes }}</textarea>
+      </label>
+    </fieldset>
+
+    {% if errors %}
+    <ul class="errors" role="alert">
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="actions">
+      <button type="submit" class="primary">{{ "Save" if client_id else "Add client" }}</button>
+      <a href="/clients">Cancel</a>
+      {% if client_id %}
+      <button type="submit" class="danger" form="delete">Delete</button>
+      {% endif %}
+    </div>
+  </form>
+  {% if client_id %}
+  <form id="delete" method="post" action="/clients/{{ client_id }}/delete"
+    onsubmit="return confirm('Delete this client? This cannot be undone.')"></form>
+  {% endif %}
+{% endblock %}

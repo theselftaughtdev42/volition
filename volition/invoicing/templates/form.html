@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Invoice · Volition{% endblock %}
 {% block content %}
-  <form id="invoice" method="post" action="/invoice">
+  <form id="invoice" method="post" action="/invoicing/invoice">
     <fieldset>
       <legend>Invoice</legend>
       <div class="grid">
@@ -46,7 +46,7 @@
         {% endif %}
       </ul>
       {% else %}
-      <p class="empty">No clients yet. <a href="/clients/new">Add one</a> to start invoicing.</p>
+      <p class="empty">No clients yet. <a href="/invoicing/clients/new">Add one</a> to start invoicing.</p>
       {% endif %}
     </fieldset>
 

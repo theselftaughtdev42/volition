@@ -8,12 +8,13 @@ from volition.core.web.deps import SetupIncomplete
 from volition.invoicing.models import Defaults, Supplier
 from volition.invoicing.store.defaults import load_defaults
 from volition.invoicing.store.supplier import load_supplier
+from volition.invoicing.templates import SLUG
 
 
 def require_supplier() -> Supplier:
     supplier = load_supplier()
     if supplier is None:
-        raise SetupIncomplete("/supplier")
+        raise SetupIncomplete(f"/{SLUG}/supplier")
     return supplier
 
 
@@ -24,7 +25,7 @@ def require_defaults(_: SupplierDep) -> Defaults:
     """Also requires the supplier, so the first run asks for that first."""
     defaults = load_defaults()
     if defaults is None:
-        raise SetupIncomplete("/defaults")
+        raise SetupIncomplete(f"/{SLUG}/defaults")
     return defaults
 
 

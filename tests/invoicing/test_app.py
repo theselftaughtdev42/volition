@@ -13,7 +13,6 @@ from volition.invoicing.models import ClientDetails, ClientRecord, Invoice, Line
 from volition.invoicing.pdf import render_html, render_pdf
 from volition.invoicing.store.clients import create_client
 from volition.invoicing.store.invoice_numbers import next_invoice_number, record_invoice_number
-from volition.invoicing.store.supplier import load_supplier
 from volition.invoicing.web.pages.invoice import parse_invoice_form
 
 
@@ -172,17 +171,11 @@ def test_stored_invoice_json_is_validated(invoice: Invoice) -> None:
 # --- HTTP ---
 
 
-def test_health(client: TestClient) -> None:
-    res = client.get("/health")
-    assert res.status_code == 200
-    assert res.json() == {"status": "ok"}
-
-
 def test_get_form(client: TestClient) -> None:
-    res = client.get("/")
+    res = client.get("/invoicing/")
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("text/html")
-    assert '<form id="invoice" method="post" action="/invoice">' in res.text
+    assert '<form id="invoice" method="post" action="/invoicing/invoice">' in res.text
     assert 'value="1"' in res.text  # invoiceNumberStart from the saved defaults
     assert "Next in sequence: MS-0001" in res.text
     assert 'value="IT &amp; Software Consultancy Services"' in res.text
@@ -191,77 +184,47 @@ def test_get_form(client: TestClient) -> None:
 
 def test_post_invalid_invoice_returns_422_json(client: TestClient) -> None:
     body = {**FORM_BODY, "clientId": "", "description": [""], "detail": [""], "quantity": [""]}
-    res = client.post("/invoice", data=body)
+    res = client.post("/invoicing/invoice", data=body)
     assert res.status_code == 422
     assert res.json() == {"errors": ["Add at least one line item", "Choose a client"]}
 
 
 def test_post_valid_invoice_returns_pdf_and_advances_counter(client: TestClient) -> None:
     stored = create_client(EXAMPLE_CLIENT)
-    res = client.post("/invoice", data={**FORM_BODY, "clientId": stored.id})
+    res = client.post("/invoicing/invoice", data={**FORM_BODY, "clientId": stored.id})
     assert res.status_code == 200, res.text
     assert res.headers["content-type"] == "application/pdf"
     assert res.headers["content-disposition"] == 'inline; filename="MS-0042.pdf"'
     assert res.content.startswith(b"%PDF")
-    assert "Next in sequence: MS-0043" in client.get("/").text
-
-
-def test_unexpected_errors_are_json_500s(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken() -> None:
-        raise RuntimeError("database is locked")
-
-    monkeypatch.setattr("volition.invoicing.web.pages.invoice.list_clients", broken)
-    res = client.get("/")
-    assert res.status_code == 500
-    assert res.json() == {"errors": ["database is locked"]}
+    assert "Next in sequence: MS-0043" in client.get("/invoicing/").text
 
 
 @pytest.mark.parametrize(
-    "headers",
+    ("method", "path"),
+    [("GET", "/clients"), ("GET", "/clients/new"), ("GET", "/supplier"), ("GET", "/defaults"), ("POST", "/invoice")],
+)
+def test_the_old_root_urls_are_gone(client: TestClient, method: str, path: str) -> None:
+    assert client.request(method, path, follow_redirects=False).status_code == 404
+
+
+def test_the_module_home_without_its_trailing_slash_redirects_to_it(client: TestClient) -> None:
+    res = client.get("/invoicing", follow_redirects=False)
+    assert res.status_code == 307 and res.headers["location"].endswith("/invoicing/")
+
+
+@pytest.mark.parametrize(
+    ("path", "current"),
     [
-        {"Sec-Fetch-Site": "cross-site"},
-        {"Sec-Fetch-Site": "same-site"},
-        {"Origin": "https://evil.example"},
-        {"Origin": "null"},
-        # Sec-Fetch-Site wins over a matching Origin.
-        {"Sec-Fetch-Site": "cross-site", "Origin": "http://localhost"},
+        ("/invoicing/", "/invoicing/"),
+        ("/invoicing/clients", "/invoicing/clients"),
+        ("/invoicing/clients/new", "/invoicing/clients"),
+        ("/invoicing/defaults", "/invoicing/defaults"),
+        ("/invoicing/supplier", "/invoicing/supplier"),
     ],
 )
-def test_cross_origin_posts_are_rejected(client: TestClient, supplier: Supplier, headers: dict[str, str]) -> None:
-    res = client.post("/supplier", data={"sortCode": "12-34-56"}, headers=headers, follow_redirects=False)
-    assert res.status_code == 403
-    assert res.json() == {"errors": ["Cross-origin request rejected"]}
-    assert load_supplier() == supplier
-
-
-@pytest.mark.parametrize(
-    "headers",
-    [{}, {"Sec-Fetch-Site": "same-origin"}, {"Sec-Fetch-Site": "none"}, {"Origin": "http://localhost"}],
-)
-def test_same_origin_and_non_browser_posts_are_allowed(client: TestClient, headers: dict[str, str]) -> None:
-    res = client.post("/clients/missing/delete", headers=headers, follow_redirects=False)
-    assert res.status_code == 404
-
-
-def test_cross_origin_gets_are_allowed(client: TestClient) -> None:
-    assert client.get("/", headers={"Sec-Fetch-Site": "cross-site"}).status_code == 200
-
-
-@pytest.mark.parametrize("host", ["localhost", "127.0.0.1:3000", "[::1]:3000"])
-def test_local_hosts_are_allowed(client: TestClient, host: str) -> None:
-    assert client.get("/health", headers={"Host": host}).status_code == 200
-
-
-def test_other_hosts_are_rejected(client: TestClient, supplier: Supplier) -> None:
-    """A DNS-rebound page is same-origin to the browser, so only the Host header gives it away."""
-    headers = {"Host": "evil.example:3000", "Sec-Fetch-Site": "same-origin", "Origin": "http://evil.example:3000"}
-    assert client.get("/", headers=headers).status_code == 400
-    res = client.post("/supplier", data={"sortCode": "12-34-56"}, headers=headers)
-    assert res.status_code == 400
-    assert load_supplier() == supplier
-
-
-def test_assets_are_served(client: TestClient) -> None:
-    res = client.get("/assets/ms-mark.svg")
-    assert res.status_code == 200
-    assert res.headers["content-type"].startswith("image/svg+xml")
+def test_pages_mark_invoicing_and_their_own_nav_link(client: TestClient, path: str, current: str) -> None:
+    page = client.get(path).text
+    assert '<a href="/invoicing/" aria-current="true">Invoicing</a>' in page
+    assert re.findall(r'<a href="([^"]+)" aria-current="page">', page) == [current]
+    for href in ["/invoicing/", "/invoicing/clients", "/invoicing/defaults", "/invoicing/supplier"]:
+        assert f'<a href="{href}"' in page

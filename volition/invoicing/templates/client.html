@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ values.name if client_id else "New client" }} · Volition{% endblock %}
 {% block content %}
-  <form id="client" method="post" action="{{ '/clients/' ~ client_id if client_id else '/clients' }}">
+  <form id="client" method="post" action="{{ '/invoicing/clients/' ~ client_id if client_id else '/invoicing/clients' }}">
     <fieldset>
       <legend>{{ "Client" if client_id else "New client" }}</legend>
       <div class="grid">
@@ -41,7 +41,7 @@
         </label>
       </div>
 {% include "invoicing/_preset_lines.html" %}
-      <p class="hint">Default = as set on the <a href="/defaults">Defaults</a> page. Quantities are entered on each invoice.</p>
+      <p class="hint">Default = as set on the <a href="/invoicing/defaults">Defaults</a> page. Quantities are entered on each invoice.</p>
     </fieldset>
 
     <fieldset>
@@ -61,14 +61,14 @@
 
     <div class="actions">
       <button type="submit" class="primary">{{ "Save" if client_id else "Add client" }}</button>
-      <a href="/clients">Cancel</a>
+      <a href="/invoicing/clients">Cancel</a>
       {% if client_id %}
       <button type="submit" class="danger" form="delete">Delete</button>
       {% endif %}
     </div>
   </form>
   {% if client_id %}
-  <form id="delete" method="post" action="/clients/{{ client_id }}/delete"
+  <form id="delete" method="post" action="/invoicing/clients/{{ client_id }}/delete"
     onsubmit="return confirm('Delete this client? This cannot be undone.')"></form>
   {% endif %}
 {% endblock %}

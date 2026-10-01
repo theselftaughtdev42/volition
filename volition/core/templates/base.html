@@ -114,13 +114,13 @@
     <div class="bar">
       <div class="brand">
         <h1><a href="/">Volition</a></h1>
-        <nav aria-label="Modules">
-          {% for item in shell.modules %}
+        <nav aria-label="Sections">
+          {% for item in shell.nav %}
           <a href="{{ item.href }}" {% if item.current %}aria-current="true"{% endif %}>{{ item.title }}</a>
           {% endfor %}
         </nav>
       </div>
-      {% if legal_name %}<span class="label">{{ legal_name }}</span>{% endif %}
+      {% if shell.legal_name %}<span class="label">{{ shell.legal_name }}</span>{% endif %}
     </div>
     {% if shell.pages %}
     <nav class="pages" aria-label="{{ shell.module.title }}">

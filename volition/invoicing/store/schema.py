@@ -1,6 +1,6 @@
 """Invoicing's schema: one script per version. Append new steps, never edit applied ones.
 
-Every table is prefixed with the module's slug. The supplier, the defaults and the counter are single-row tables
+Every table is prefixed with the module's slug. The settings and the counter are single-row tables
 (`id` is always 1) holding nothing until the first run saves them.
 """
 
@@ -28,14 +28,8 @@ MIGRATIONS = (
         UNIQUE (client_id, position)
     ) STRICT;
 
-    -- The Supplier model as JSON.
-    CREATE TABLE invoicing_supplier (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        data TEXT NOT NULL
-    ) STRICT;
-
-    -- The Defaults model as JSON.
-    CREATE TABLE invoicing_defaults (
+    -- The InvoicingSettings model as JSON.
+    CREATE TABLE invoicing_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         data TEXT NOT NULL
     ) STRICT;

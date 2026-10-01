@@ -14,7 +14,7 @@
         </label>
         <label><span class="label">Due date</span>
           <input name="dueDate" type="date">
-          <span class="hint">Blank = issue date + {{ supplier.paymentTermsDays }} days</span>
+          <span class="hint">Blank = issue date + {{ paymentTermsDays }} days</span>
         </label>
         <label><span class="label">Period from</span>
           <input name="periodStart" type="date" value="{{ values.periodStart }}">
@@ -168,7 +168,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       status.innerHTML = "";
       status.append(`Downloaded ${filename}. `,
-        Object.assign(document.createElement("a"), { href: "/", textContent: "Start the next invoice" }));
+        Object.assign(document.createElement("a"), { href: "/invoicing/", textContent: "Start the next invoice" }));
     } catch (err) {
       status.textContent = "";
       errors.replaceChildren(Object.assign(document.createElement("li"), { textContent: String(err) }));

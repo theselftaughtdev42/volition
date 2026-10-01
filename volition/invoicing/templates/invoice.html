@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<title>Invoice {{ invoice.number }} — {{ supplier.name }}</title>
+<title>Invoice {{ invoice.number }} — {{ business.name }}</title>
 <style>
   /* JetBrains Mono @font-face rules, inlined from assets/fonts/ at render time */
   {{ assets.fontFaceCss|safe }}
@@ -73,11 +73,11 @@
 
   <header class="head">
     <div>
-      <img class="logo" src="{{ assets.logo|safe }}" alt="{{ supplier.name }}">
+      <img class="logo" src="{{ assets.logo|safe }}" alt="{{ business.name }}">
       <div class="small">
-        {{ supplier.legalName }}<br>
-        {% for line in supplier.address %}{{ line }}<br>{% endfor %}
-        {{ supplier.website }}
+        {{ business.legalName }}<br>
+        {% for line in business.address %}{{ line }}<br>{% endfor %}
+        {{ business.website }}
       </div>
     </div>
     <div>
@@ -137,12 +137,12 @@
     <section class="foot">
       <div>
         <div class="label">Payment</div>
-        <div>Bank transfer within {{ supplier.paymentTermsDays }} days.</div>
+        <div>Bank transfer within {{ paymentTermsDays }} days.</div>
         <div class="kv bank">
-          <div><span class="muted">Bank</span><span>{{ supplier.bank.bankName }}</span></div>
-          <div><span class="muted">Account name</span><span>{{ supplier.bank.accountName }}</span></div>
-          <div><span class="muted">Sort code</span><span class="num" style="text-align:left">{{ supplier.bank.sortCode }}</span></div>
-          <div><span class="muted">Account no.</span><span class="num" style="text-align:left">{{ supplier.bank.accountNumber }}</span></div>
+          <div><span class="muted">Bank</span><span>{{ bank.bankName }}</span></div>
+          <div><span class="muted">Account name</span><span>{{ bank.accountName }}</span></div>
+          <div><span class="muted">Sort code</span><span class="num" style="text-align:left">{{ bank.sortCode }}</span></div>
+          <div><span class="muted">Account no.</span><span class="num" style="text-align:left">{{ bank.accountNumber }}</span></div>
           <div><span class="muted">Reference</span><span>{{ invoice.number }}</span></div>
         </div>
       </div>
@@ -154,7 +154,7 @@
       {% endif %}
     </section>
     <div class="small">
-      {{ supplier.legalName }} · Registered in {{ supplier.registeredIn }} no. {{ supplier.companyNumber }}{% if supplier.vatNumber %}{% if totals.vat %} · VAT no. {{ supplier.vatNumber }}{% endif %}{% endif %}
+      {{ business.legalName }} · Registered in {{ business.registeredIn }} no. {{ business.companyNumber }}{% if business.vatNumber %}{% if totals.vat %} · VAT no. {{ business.vatNumber }}{% endif %}{% endif %}
     </div>
   </div>
 

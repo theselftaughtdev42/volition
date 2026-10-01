@@ -1,0 +1,8 @@
+{
+  "invoiceNumberStart": 1,
+  "vat": true,
+  "unit": "days",
+  "lineItems": [{ "description": "IT & Software Consultancy Services", "rate": 650 }],
+  "paymentTermsDays": 30,
+  "bank": { "bankName": "Monzo", "accountName": "Mackay Software Limited", "sortCode": "00-00-00", "accountNumber": "00000000" }
+}

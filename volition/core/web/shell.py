@@ -1,4 +1,5 @@
-"""The frame base.html puts around every page: the modules nav, the current module's own nav, and what is current."""
+"""The frame base.html puts around every page: the top nav, the current module's own nav, what is current, and whose
+app it is."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -6,7 +7,9 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from volition.core.models import Business
 from volition.core.modules import Module
+from volition.core.web.deps import BUSINESS_PATH, saved_business
 
 
 @dataclass(frozen=True)
@@ -18,19 +21,21 @@ class NavItem:
 
 @dataclass(frozen=True)
 class Shell:
-    #: Every module, the current one marked.
-    modules: tuple[NavItem, ...]
+    #: Every module then Business, the current one marked.
+    nav: tuple[NavItem, ...]
     #: The page's module, or None outside any module (e.g. on the home page).
     module: Module | None
     #: The current module's own pages, the current one marked; empty outside a module.
     pages: tuple[NavItem, ...]
+    #: The business's, for the header; None until the first run saves it.
+    legal_name: str | None
 
 
 def module_href(module: Module) -> str:
     return f"/{module.slug}/"
 
 
-def shell_for(modules: Sequence[Module], path: str) -> Shell:
+def shell_for(modules: Sequence[Module], path: str, business: Business | None) -> Shell:
     """The shell around the page at `path`, e.g. "/invoicing/clients/new" marks Invoicing and its Clients link."""
     current = next((m for m in modules if _within(path, f"/{m.slug}")), None)
     pages: tuple[NavItem, ...] = ()
@@ -38,12 +43,18 @@ def shell_for(modules: Sequence[Module], path: str) -> Shell:
         prefix = f"/{current.slug}"
         page = path.removeprefix(prefix) or "/"
         # The most specific link the page sits under, so "/" (the module's home) only when nothing else is.
-        marked = max((link for link in current.nav if _within(page, link.path)), key=lambda link: len(link.path), default=None)
+        marked = max(
+            (link for link in current.nav if _within(page, link.path)), key=lambda link: len(link.path), default=None
+        )
         pages = tuple(NavItem(link.title, prefix + link.path, link is marked) for link in current.nav)
     return Shell(
-        modules=tuple(NavItem(m.title, module_href(m), m is current) for m in modules),
+        nav=(
+            *(NavItem(m.title, module_href(m), m is current) for m in modules),
+            NavItem("Business", BUSINESS_PATH, _within(path, BUSINESS_PATH)),
+        ),
         module=current,
         pages=pages,
+        legal_name=business and business.legal_name,
     )
 
 
@@ -53,8 +64,8 @@ def _within(path: str, base: str) -> bool:
     return path == base or path.startswith(base + "/")
 
 
-def shell(request: Request) -> Shell:
-    return shell_for(request.app.state.modules, request.url.path)
+def shell(request: Request, business: Annotated[Business | None, Depends(saved_business)]) -> Shell:
+    return shell_for(request.app.state.modules, request.url.path, business)
 
 
 ShellDep = Annotated[Shell, Depends(shell)]

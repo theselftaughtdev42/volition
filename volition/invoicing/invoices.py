@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from volition.invoicing.models import Invoice, Period, Supplier
+from volition.core.models import Business
+from volition.invoicing.models import Invoice, InvoicingSettings, Period
 
 #: UK standard rate, applied when an invoice has `vat: true`.
 VAT_PERCENT = 20
@@ -82,13 +83,15 @@ def format_quantity(n: int) -> str:
 UNIT_LABELS: dict[str, str] = {"days": "Days", "hours": "Hours", "items": "Qty"}
 
 
-def build_view_model(invoice: Invoice, supplier: Supplier) -> dict[str, Any]:
+def build_view_model(invoice: Invoice, business: Business, settings: InvoicingSettings) -> dict[str, Any]:
     """Template context. Keys stay camelCase so the templates read like the JSON."""
     totals = compute_totals(invoice)
-    due_date = invoice.due_date or invoice.issue_date + timedelta(days=supplier.payment_terms_days)
+    due_date = invoice.due_date or invoice.issue_date + timedelta(days=settings.payment_terms_days)
 
     return {
-        "supplier": supplier.model_dump(by_alias=True, exclude_none=True),
+        "business": business.model_dump(by_alias=True, exclude_none=True),
+        "paymentTermsDays": settings.payment_terms_days,
+        "bank": settings.bank.model_dump(by_alias=True),
         "invoice": invoice.model_dump(by_alias=True, exclude_none=True),
         "fmt": {
             "issueDate": format_date(invoice.issue_date),

@@ -5,8 +5,9 @@ import base64
 from weasyprint import HTML
 
 from volition.core.config import ROOT
+from volition.core.models import Business
 from volition.invoicing.invoices import build_view_model
-from volition.invoicing.models import Invoice, Supplier
+from volition.invoicing.models import Invoice, InvoicingSettings
 from volition.invoicing.templates import SLUG, templates
 
 
@@ -27,10 +28,11 @@ ASSETS = {
 }
 
 
-def render_html(invoice: Invoice, supplier: Supplier) -> str:
-    return templates.get_template(f"{SLUG}/invoice.html").render(**build_view_model(invoice, supplier), assets=ASSETS)
+def render_html(invoice: Invoice, business: Business, settings: InvoicingSettings) -> str:
+    context = build_view_model(invoice, business, settings)
+    return templates.get_template(f"{SLUG}/invoice.html").render(**context, assets=ASSETS)
 
 
-def render_pdf(invoice: Invoice, supplier: Supplier) -> bytes:
+def render_pdf(invoice: Invoice, business: Business, settings: InvoicingSettings) -> bytes:
     """CPU-bound: call from a worker thread in async code."""
-    return HTML(string=render_html(invoice, supplier)).write_pdf()
+    return HTML(string=render_html(invoice, business, settings)).write_pdf()

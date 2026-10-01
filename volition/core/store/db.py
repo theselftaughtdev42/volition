@@ -48,6 +48,12 @@ CORE_MIGRATIONS = (
         -- How many of the module's migrations have been applied.
         version INTEGER NOT NULL CHECK (version >= 0)
     ) STRICT;
+
+    -- The Business model as JSON, in its single row (id is always 1) once the first run saves it.
+    CREATE TABLE business (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        data TEXT NOT NULL
+    ) STRICT;
     """,
 )
 

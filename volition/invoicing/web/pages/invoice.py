@@ -8,7 +8,7 @@ from fastapi import APIRouter, Response
 from fastapi.responses import HTMLResponse
 
 from volition.core.errors import ValidationError
-from volition.core.web.deps import FormDep
+from volition.core.web.deps import BusinessDep, FormDep
 from volition.core.web.forms import FormBody, field, field_values, validate_form, whole_number
 from volition.core.web.shell import Shell, ShellDep
 from volition.invoicing.invoices import (
@@ -18,27 +18,27 @@ from volition.invoicing.invoices import (
     month_period,
     parse_invoice_number,
 )
-from volition.invoicing.models import ClientRecord, Defaults, Invoice, Supplier
+from volition.invoicing.models import ClientRecord, Invoice, InvoicingSettings
 from volition.invoicing.pdf import render_pdf
 from volition.invoicing.store.clients import get_client, list_clients
 from volition.invoicing.store.invoice_numbers import next_invoice_number, record_invoice_number
-from volition.invoicing.web.deps import DefaultsDep, SupplierDep
+from volition.invoicing.web.deps import SettingsDep
 from volition.invoicing.web.pages import render_page
 
 router = APIRouter()
 
 
 @router.get("/", response_class=HTMLResponse)
-def invoice_form(shell: ShellDep, defaults: DefaultsDep, supplier: SupplierDep) -> HTMLResponse:
-    next_number = next_invoice_number(defaults.invoice_number_start)
-    return HTMLResponse(render_form(shell, defaults, supplier, next_number, list_clients()))
+def invoice_form(shell: ShellDep, settings: SettingsDep) -> HTMLResponse:
+    next_number = next_invoice_number(settings.invoice_number_start)
+    return HTMLResponse(render_form(shell, settings, next_number, list_clients()))
 
 
 # A plain `def`, so FastAPI runs it on a worker thread: rendering and file I/O block.
 @router.post("/invoice")
-def create_invoice(form: FormDep, supplier: SupplierDep) -> Response:
+def create_invoice(form: FormDep, business: BusinessDep, settings: SettingsDep) -> Response:
     invoice = parse_invoice_form(form, get_client)
-    pdf = render_pdf(invoice, supplier)
+    pdf = render_pdf(invoice, business, settings)
     # Only count the number once the PDF actually exists.
     record_invoice_number(parse_invoice_number(invoice.number))
     return Response(
@@ -48,8 +48,8 @@ def create_invoice(form: FormDep, supplier: SupplierDep) -> Response:
     )
 
 
-def _invoice_presets(defaults: Defaults, client: ClientRecord | None = None) -> dict[str, Any]:
-    """The fields choosing a client fills: the client's own defaults, else the global ones."""
+def _invoice_presets(defaults: InvoicingSettings, client: ClientRecord | None = None) -> dict[str, Any]:
+    """The fields choosing a client fills: the client's own defaults, else the settings' ones."""
     line_items = (client.line_items if client else None) or defaults.line_items
     notes = client.notes if client and client.notes is not None else defaults.notes
     return {
@@ -60,7 +60,7 @@ def _invoice_presets(defaults: Defaults, client: ClientRecord | None = None) -> 
     }
 
 
-def _client_option(client: ClientRecord, defaults: Defaults) -> dict[str, Any]:
+def _client_option(client: ClientRecord, defaults: InvoicingSettings) -> dict[str, Any]:
     return {
         "id": client.id,
         "name": client.name,
@@ -72,8 +72,7 @@ def _client_option(client: ClientRecord, defaults: Defaults) -> dict[str, Any]:
 
 def render_form(
     shell: Shell,
-    defaults: Defaults,
-    supplier: Supplier,
+    settings: InvoicingSettings,
     next_number: int,
     clients: list[ClientRecord],
     now: datetime | None = None,
@@ -81,14 +80,14 @@ def render_form(
     now = now or datetime.now()
     today = local_iso_date(now)
     period = month_period(date.fromisoformat(today))
-    options = [_client_option(client, defaults) for client in clients]
+    options = [_client_option(client, settings) for client in clients]
     # A lone client is preselected; with several, choosing is required so no one is billed by accident.
     selected = options[0] if len(options) == 1 else None
     return render_page(
         "form.html",
         shell,
-        supplier,
         vatPercent=VAT_PERCENT,
+        paymentTermsDays=settings.payment_terms_days,
         clients=options,
         values={
             "number": next_number,
@@ -97,7 +96,7 @@ def render_form(
             "periodStart": period.start.isoformat(),
             "periodEnd": period.end.isoformat(),
             "client": selected,
-            **(selected or _invoice_presets(defaults)),
+            **(selected or _invoice_presets(settings)),
         },
     )
 

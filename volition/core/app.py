@@ -1,6 +1,7 @@
 """The app factory: builds the FastAPI app from a list of modules, with the middleware and error handling they share.
 
-Each module's router is mounted at `/<slug>`, and the home page at `/` links to every module. A dependency raising
+Each module's router is mounted at `/<slug>`, and the home page at `/` links to every module. Every page but the
+Business page itself (and /health and /assets) needs the business saved first. Beyond that, a dependency raising
 `SetupIncomplete` redirects to the page that asks for what is missing, so modules own their first-run setup.
 """
 
@@ -9,7 +10,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,11 +19,10 @@ from volition.core.config import ROOT, allowed_hosts
 from volition.core.errors import ValidationError
 from volition.core.modules import Module
 from volition.core.store import db
-from volition.core.templates import environment
-from volition.core.web.deps import SetupIncomplete
+from volition.core.templates import templates
+from volition.core.web import business
+from volition.core.web.deps import SetupIncomplete, require_business
 from volition.core.web.shell import ShellDep, module_href
-
-templates = environment({})
 
 logger = logging.getLogger("volition")
 
@@ -44,10 +44,13 @@ def create_app(modules: Sequence[Module], bootstrap: db.Bootstrap | None = None)
 
     # What the shell dependency builds every page's nav from.
     app.state.modules = tuple(modules)
+    needs_business = [Depends(require_business)]
     for module in modules:
-        app.include_router(module.router, prefix=f"/{module.slug}")
+        # Ahead of the module's own dependencies, so the first run asks for the business before anything else.
+        app.include_router(module.router, prefix=f"/{module.slug}", dependencies=needs_business)
+    app.include_router(business.router)
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get("/", response_class=HTMLResponse, dependencies=needs_business)
     def home(shell: ShellDep) -> HTMLResponse:
         cards = [{"title": m.title, "description": m.description, "href": module_href(m)} for m in modules]
         return HTMLResponse(templates.get_template("home.html").render(shell=shell, cards=cards))

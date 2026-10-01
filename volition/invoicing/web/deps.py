@@ -1,34 +1,22 @@
-"""The first-run setup invoicing's pages require: the supplier, then the invoice defaults."""
+"""The first-run setup invoicing's pages require: the invoicing settings (core already requires the business)."""
 
 from typing import Annotated
 
 from fastapi import Depends
 
 from volition.core.web.deps import SetupIncomplete
-from volition.invoicing.models import Defaults, Supplier
-from volition.invoicing.store.defaults import load_defaults
-from volition.invoicing.store.supplier import load_supplier
+from volition.invoicing.models import InvoicingSettings
+from volition.invoicing.store.settings import load_settings
 from volition.invoicing.templates import SLUG
 
 
-def require_supplier() -> Supplier:
-    supplier = load_supplier()
-    if supplier is None:
-        raise SetupIncomplete(f"/{SLUG}/supplier")
-    return supplier
+def require_settings() -> InvoicingSettings:
+    settings = load_settings()
+    if settings is None:
+        raise SetupIncomplete(f"/{SLUG}/settings")
+    return settings
 
 
-SupplierDep = Annotated[Supplier, Depends(require_supplier)]
-
-
-def require_defaults(_: SupplierDep) -> Defaults:
-    """Also requires the supplier, so the first run asks for that first."""
-    defaults = load_defaults()
-    if defaults is None:
-        raise SetupIncomplete(f"/{SLUG}/defaults")
-    return defaults
-
-
-DefaultsDep = Annotated[Defaults, Depends(require_defaults)]
-#: For pages that don't use the defaults but shouldn't be reached before they're set.
-NEEDS_DEFAULTS = [Depends(require_defaults)]
+SettingsDep = Annotated[InvoicingSettings, Depends(require_settings)]
+#: For pages that don't use the settings but shouldn't be reached before they're saved.
+NEEDS_SETTINGS = [Depends(require_settings)]

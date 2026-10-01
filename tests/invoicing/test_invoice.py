@@ -1,5 +1,6 @@
 from datetime import date, datetime
 
+from volition.core.models import Business
 from volition.invoicing.invoices import (
     Totals,
     build_view_model,
@@ -9,11 +10,13 @@ from volition.invoicing.invoices import (
     local_iso_date,
     month_period,
 )
-from volition.invoicing.models import Invoice, LineItem, Period, Supplier
+from volition.invoicing.models import Invoice, InvoicingSettings, LineItem, Period
 
 
-def test_example_invoice_totals_match_the_spec(invoice: Invoice, supplier: Supplier) -> None:
-    vm = build_view_model(invoice, supplier)
+def test_example_invoice_totals_match_the_spec(
+    invoice: Invoice, business: Business, settings: InvoicingSettings
+) -> None:
+    vm = build_view_model(invoice, business, settings)
     assert vm["totals"] == {"subtotal": "£6,325.00", "vat": "£1,265.00", "vatPercent": "20%", "total": "£7,590.00"}
     assert [(line["quantity"], line["rate"], line["amount"]) for line in vm["lines"]] == [
         ("10", "£550.00", "£5,500.00"),
@@ -27,15 +30,17 @@ def test_totals_are_computed_in_integer_pence(invoice: Invoice) -> None:
     assert totals == Totals(lines=[99_900, 100], subtotal=100_000, vat=20_000, total=120_000)
 
 
-def test_unticked_vat_hides_the_vat_row(invoice: Invoice, supplier: Supplier) -> None:
-    vm = build_view_model(invoice.model_copy(update={"vat": False}), supplier)
+def test_unticked_vat_hides_the_vat_row(invoice: Invoice, business: Business, settings: InvoicingSettings) -> None:
+    vm = build_view_model(invoice.model_copy(update={"vat": False}), business, settings)
     assert vm["totals"]["vat"] is None
     assert vm["totals"]["total"] == "£6,325.00"
 
 
-def test_dates_due_date_default_and_period_formatting(invoice: Invoice, supplier: Supplier) -> None:
+def test_dates_due_date_default_and_period_formatting(
+    invoice: Invoice, business: Business, settings: InvoicingSettings
+) -> None:
     period = Period(start=date(2026, 9, 1), end=date(2026, 9, 30))
-    vm = build_view_model(invoice.model_copy(update={"due_date": None, "period": period}), supplier)
+    vm = build_view_model(invoice.model_copy(update={"due_date": None, "period": period}), business, settings)
     assert vm["fmt"]["issueDate"] == "19 Sep 2026"
     assert vm["fmt"]["dueDate"] == "19 Oct 2026"
     assert vm["fmt"]["period"] == "1 Sep – 30 Sep 2026"

@@ -3,6 +3,7 @@
 from typing import Any
 
 from volition.core.modules import NavLink
+from volition.core.web.shell import Shell
 from volition.invoicing.models import Supplier
 from volition.invoicing.templates import SLUG, templates
 
@@ -14,11 +15,14 @@ NAV = (
 )
 
 
-def render_page(template: str, current: str, supplier: Supplier | None, **context: Any) -> str:
-    """A page in base.html's frame: `current` is the path of the nav link to mark, `supplier` fills the header."""
+#: Where the module is mounted, for links and redirects.
+PREFIX = f"/{SLUG}"
+
+
+def render_page(template: str, shell: Shell, supplier: Supplier | None, **context: Any) -> str:
+    """A page in base.html's frame: `shell` gives the nav, `supplier` fills the header."""
     return templates.get_template(f"{SLUG}/{template}").render(
-        nav=NAV,
-        current=current,
+        shell=shell,
         legal_name=supplier and supplier.legal_name,
         supplier=supplier and supplier.model_dump(by_alias=True, exclude_none=True),
         **context,

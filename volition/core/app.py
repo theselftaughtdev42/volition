@@ -1,7 +1,7 @@
 """The app factory: builds the FastAPI app from a list of modules, with the middleware and error handling they share.
 
-Every module's router is mounted at the root for now. A dependency raising `SetupIncomplete` redirects to the
-page that asks for what is missing, so modules own their first-run setup.
+Each module's router is mounted at `/<slug>`, and the home page at `/` links to every module. A dependency raising
+`SetupIncomplete` redirects to the page that asks for what is missing, so modules own their first-run setup.
 """
 
 import logging
@@ -11,14 +11,18 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from volition.core.config import ROOT, allowed_hosts
 from volition.core.errors import ValidationError
 from volition.core.modules import Module
 from volition.core.store import db
+from volition.core.templates import environment
 from volition.core.web.deps import SetupIncomplete
+from volition.core.web.shell import ShellDep, module_href
+
+templates = environment({})
 
 logger = logging.getLogger("volition")
 
@@ -39,8 +43,15 @@ def create_app(modules: Sequence[Module]) -> FastAPI:
     # Read once, when the app is built: restart to change ALLOWED_HOSTS.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts(), www_redirect=False)
 
+    # What the shell dependency builds every page's nav from.
+    app.state.modules = tuple(modules)
     for module in modules:
-        app.include_router(module.router)
+        app.include_router(module.router, prefix=f"/{module.slug}")
+
+    @app.get("/", response_class=HTMLResponse)
+    def home(shell: ShellDep) -> HTMLResponse:
+        cards = [{"title": m.title, "description": m.description, "href": module_href(m)} for m in modules]
+        return HTMLResponse(templates.get_template("home.html").render(shell=shell, cards=cards))
 
     @app.get("/health")
     def health() -> dict[str, str]:

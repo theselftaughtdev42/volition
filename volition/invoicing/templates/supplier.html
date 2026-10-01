@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Supplier · Volition{% endblock %}
 {% block content %}
-  <form id="supplier" method="post" action="/supplier">
+  <form id="supplier" method="post" action="/invoicing/supplier">
     {% if first_run %}
     <p class="intro">Welcome. First, who are invoices from? Everything here is printed on each invoice; you can change it on this page later.</p>
     {% endif %}
@@ -75,7 +75,7 @@
 
     <div class="actions">
       <button type="submit" class="primary">{{ "Save and continue" if first_run else "Save" }}</button>
-      {% if not first_run %}<a href="/">Cancel</a>{% endif %}
+      {% if not first_run %}<a href="/invoicing/">Cancel</a>{% endif %}
     </div>
   </form>
 {% endblock %}

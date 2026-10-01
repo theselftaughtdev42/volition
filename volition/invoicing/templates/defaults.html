@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Defaults · Volition{% endblock %}
 {% block content %}
-  <form id="defaults" method="post" action="/defaults">
+  <form id="defaults" method="post" action="/invoicing/defaults">
     {% if first_run %}
     <p class="intro">Next, set the defaults new invoices start with; you can change them on this page later.</p>
     {% endif %}
@@ -51,7 +51,7 @@
 
     <div class="actions">
       <button type="submit" class="primary">{{ "Save and continue" if first_run else "Save" }}</button>
-      {% if not first_run %}<a href="/">Cancel</a>{% endif %}
+      {% if not first_run %}<a href="/invoicing/">Cancel</a>{% endif %}
     </div>
   </form>
 {% endblock %}

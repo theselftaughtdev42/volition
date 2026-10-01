@@ -1,4 +1,4 @@
-"""The supplier form (/supplier): who invoices are from, first on the first run."""
+"""The supplier form (/invoicing/supplier): who invoices are from, first on the first run."""
 
 import re
 from typing import Any
@@ -9,38 +9,40 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from volition.core.errors import ValidationError
 from volition.core.web.deps import FormDep
 from volition.core.web.forms import FormBody, field, lines, validate_form, whole_number
+from volition.core.web.shell import Shell, ShellDep
 from volition.invoicing.models import Supplier
 from volition.invoicing.store.supplier import load_supplier, save_supplier
-from volition.invoicing.web.pages import render_page
+from volition.invoicing.web.pages import PREFIX, render_page
 
 router = APIRouter()
 
 
 @router.get("/supplier", response_class=HTMLResponse)
-def supplier_form() -> HTMLResponse:
+def supplier_form(shell: ShellDep) -> HTMLResponse:
     supplier = load_supplier()
-    return HTMLResponse(render_supplier_form(supplier, supplier_form_values(supplier), first_run=supplier is None))
+    values = supplier_form_values(supplier)
+    return HTMLResponse(render_supplier_form(shell, supplier, values, first_run=supplier is None))
 
 
 @router.post("/supplier", response_model=None)
-def set_supplier(form: FormDep) -> Response:
+def set_supplier(form: FormDep, shell: ShellDep) -> Response:
     try:
         save_supplier(parse_supplier_form(form))
     except ValidationError as e:
         supplier = load_supplier()
-        html = render_supplier_form(supplier, submitted_supplier_values(form), supplier is None, e.errors)
+        html = render_supplier_form(shell, supplier, submitted_supplier_values(form), supplier is None, e.errors)
         return HTMLResponse(html, status_code=422)
-    # On the first run, / then redirects on to the defaults.
-    return RedirectResponse("/", status_code=303)
+    # On the first run, the invoice form then redirects on to the defaults.
+    return RedirectResponse(f"{PREFIX}/", status_code=303)
 
 
 def render_supplier_form(
-    supplier: Supplier | None, values: dict[str, Any], first_run: bool, errors: list[str] | None = None
+    shell: Shell, supplier: Supplier | None, values: dict[str, Any], first_run: bool, errors: list[str] | None = None
 ) -> str:
     """`supplier` is the stored one (None on the first run), for the header; `values` are what the form shows."""
     return render_page(
         "supplier.html",
-        "/supplier",
+        shell,
         supplier,
         values=values,
         first_run=first_run,

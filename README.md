@@ -27,10 +27,12 @@ To cut a release, run `make release BUMP=patch` (or `minor`/`major`, or `V=1.2.3
 
 ## Configuration
 
-Everything lives in the database. On the first run every page redirects to ask for it:
+Volition opens on a home page with a card per module; invoicing lives under `/invoicing/`. Every page has the modules nav, plus the current module's own pages.
 
-1. `/supplier`: who invoices are from. The trading and legal names, address, email, website, company number and where it is registered, VAT number, payment terms and bank details, all printed on each invoice.
-2. `/defaults`: the invoice defaults. The first invoice number, whether VAT is ticked, unit, line items (description, detail, rate), and notes. They are used where the chosen client sets none.
+Everything lives in the database. On the first run every invoicing page redirects to ask for it:
+
+1. `/invoicing/supplier`: who invoices are from. The trading and legal names, address, email, website, company number and where it is registered, VAT number, payment terms and bank details, all printed on each invoice.
+2. `/invoicing/defaults`: the invoice defaults. The first invoice number, whether VAT is ticked, unit, line items (description, detail, rate), and notes. They are used where the chosen client sets none.
 
 Both can be changed on those pages later.
 
@@ -42,7 +44,7 @@ The period defaults to the current calendar month, the issue date to today, and 
 
 ## Clients
 
-Clients are managed at `/clients` and stored in `DATA_DIR/volition.db`. Each has bill-to details (name, contact, address, email) and optional invoice defaults: VAT, unit, line items (description, detail and rate; quantities are entered per invoice) and notes. Anything a client leaves unset falls back to the defaults.
+Clients are managed at `/invoicing/clients` and stored in `DATA_DIR/volition.db`. Each has bill-to details (name, contact, address, email) and optional invoice defaults: VAT, unit, line items (description, detail and rate; quantities are entered per invoice) and notes. Anything a client leaves unset falls back to the defaults.
 
 The invoice form bills whichever client is chosen from its dropdown, exactly as stored: fix a client's details on its page rather than on the invoice. Choosing a client replaces the VAT, unit, line items and notes with that client's defaults. A lone client is preselected; with several, one must be chosen. Names are unique, ignoring case, and client ids are UUIDv7s.
 

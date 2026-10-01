@@ -1,4 +1,4 @@
-"""The invoice form (GET /) and the PDF it generates (POST /invoice)."""
+"""The invoice form (GET /invoicing/) and the PDF it generates (POST /invoicing/invoice)."""
 
 from collections.abc import Callable
 from datetime import date, datetime
@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from volition.core.errors import ValidationError
 from volition.core.web.deps import FormDep
 from volition.core.web.forms import FormBody, field, field_values, validate_form, whole_number
+from volition.core.web.shell import Shell, ShellDep
 from volition.invoicing.invoices import (
     VAT_PERCENT,
     format_invoice_number,
@@ -28,9 +29,9 @@ router = APIRouter()
 
 
 @router.get("/", response_class=HTMLResponse)
-def invoice_form(defaults: DefaultsDep, supplier: SupplierDep) -> HTMLResponse:
+def invoice_form(shell: ShellDep, defaults: DefaultsDep, supplier: SupplierDep) -> HTMLResponse:
     next_number = next_invoice_number(defaults.invoice_number_start)
-    return HTMLResponse(render_form(defaults, supplier, next_number, list_clients()))
+    return HTMLResponse(render_form(shell, defaults, supplier, next_number, list_clients()))
 
 
 # A plain `def`, so FastAPI runs it on a worker thread: rendering and file I/O block.
@@ -70,6 +71,7 @@ def _client_option(client: ClientRecord, defaults: Defaults) -> dict[str, Any]:
 
 
 def render_form(
+    shell: Shell,
     defaults: Defaults,
     supplier: Supplier,
     next_number: int,
@@ -84,7 +86,7 @@ def render_form(
     selected = options[0] if len(options) == 1 else None
     return render_page(
         "form.html",
-        "/",
+        shell,
         supplier,
         vatPercent=VAT_PERCENT,
         clients=options,

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Response
 from fastapi.responses import HTMLResponse
 
+from volition.core.config import timezone
 from volition.core.errors import ValidationError
 from volition.core.web.deps import BusinessDep, FormDep
 from volition.core.web.forms import FormBody, field, field_values, validate_form, whole_number
@@ -77,8 +78,8 @@ def render_form(
     clients: list[ClientRecord],
     now: datetime | None = None,
 ) -> str:
-    now = now or datetime.now()
-    today = local_iso_date(now)
+    tz = timezone()
+    today = local_iso_date(now or datetime.now(tz), tz)
     period = month_period(date.fromisoformat(today))
     options = [_client_option(client, settings) for client in clients]
     # A lone client is preselected; with several, choosing is required so no one is billed by accident.

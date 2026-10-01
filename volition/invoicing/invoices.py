@@ -4,6 +4,7 @@ import calendar
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from volition.core.models import Business
 from volition.invoicing.models import Invoice, InvoicingSettings, Period
@@ -64,10 +65,9 @@ def format_period(start: date, end: date) -> str:
     return f"{start_text} – {format_date(end)}"
 
 
-def local_iso_date(now: datetime) -> str:
-    """Today's date in the server's local time zone, as YYYY-MM-DD."""
-    local = now.astimezone() if now.tzinfo else now
-    return local.date().isoformat()
+def local_iso_date(now: datetime, tz: ZoneInfo) -> str:
+    """The date it is in `tz` at `now` (which must be time zone aware), as YYYY-MM-DD."""
+    return now.astimezone(tz).date().isoformat()
 
 
 def month_period(today: date) -> Period:

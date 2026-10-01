@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -18,3 +19,11 @@ def allowed_hosts() -> list[str]:
     """
     hosts = os.environ.get("ALLOWED_HOSTS") or "127.0.0.1,localhost,[::1]"
     return [host.strip().lower() for host in hosts.split(",") if host.strip()]
+
+
+def timezone() -> ZoneInfo:
+    """The business's time zone, from TIMEZONE (an IANA name such as "Europe/London"): it decides what "today" is.
+
+    Read at call time, like DATA_DIR. An unknown name raises ZoneInfoNotFoundError.
+    """
+    return ZoneInfo(os.environ.get("TIMEZONE") or "Europe/London")

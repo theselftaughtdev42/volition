@@ -1,4 +1,5 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 from volition.core.models import Business
 from volition.invoicing.invoices import (
@@ -51,7 +52,13 @@ def test_default_period_is_the_whole_current_month() -> None:
     assert month_period(date(2026, 9, 23)) == Period(start=date(2026, 9, 1), end=date(2026, 9, 30))
     assert month_period(date(2026, 1, 31)) == Period(start=date(2026, 1, 1), end=date(2026, 1, 31))
     assert month_period(date(2028, 2, 10)) == Period(start=date(2028, 2, 1), end=date(2028, 2, 29))
-    assert local_iso_date(datetime(2026, 9, 23, 23, 59)) == "2026-09-23"
+
+
+def test_today_is_the_date_in_the_given_time_zone() -> None:
+    # Half past eleven at night UTC is already the next day in London in summer time.
+    late = datetime(2026, 9, 23, 23, 30, tzinfo=UTC)
+    assert local_iso_date(late, ZoneInfo("UTC")) == "2026-09-23"
+    assert local_iso_date(late, ZoneInfo("Europe/London")) == "2026-09-24"
 
 
 def test_quantities_are_grouped() -> None:

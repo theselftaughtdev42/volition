@@ -29,14 +29,13 @@ logger = logging.getLogger("volition")
 type CallNext = Callable[[Request], Awaitable[Response]]
 
 
-def create_app(modules: Sequence[Module]) -> FastAPI:
-    # One user_version-numbered list across modules: append-only only while there is a single module.
-    migrations = [script for module in modules for script in module.migrations]
+def create_app(modules: Sequence[Module], bootstrap: db.Bootstrap | None = None) -> FastAPI:
+    """`bootstrap` upgrades a database from before modules, if there might be one."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Fail fast on a database that can't be migrated rather than on the first request.
-        db.migrate(migrations)
+        db.migrate(modules, bootstrap)
         yield
 
     app = FastAPI(title="Volition", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)

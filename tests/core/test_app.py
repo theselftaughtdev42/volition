@@ -17,7 +17,7 @@ from volition.core.web.shell import ShellDep
 TEMPLATES = Path(__file__).resolve().parent / "fake_templates"
 
 
-def fake_module(slug: str, title: str) -> Module:
+def fake_module(slug: str, title: str, migrations: tuple[str, ...] = ()) -> Module:
     """A module with a home page, a list of things (one of them broken) and a form that adds to it."""
     templates = environment({slug: TEMPLATES})
     router = APIRouter()
@@ -53,7 +53,7 @@ def fake_module(slug: str, title: str) -> Module:
         description=f"Keeps track of {slug}.",
         router=router,
         nav=(NavLink("Home", "/"), NavLink("Things", "/things")),
-        migrations=(),
+        migrations=migrations,
         templates=TEMPLATES,
     )
 

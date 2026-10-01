@@ -6,8 +6,8 @@ from volition.core.store.db import transaction
 
 
 def _last_invoice_number(conn: sqlite3.Connection) -> int | None:
-    row = conn.execute("SELECT value FROM meta WHERE key = 'lastInvoiceNumber'").fetchone()
-    return None if row is None else row["value"]
+    row = conn.execute("SELECT last_invoice_number FROM invoicing_counter").fetchone()
+    return None if row is None else row["last_invoice_number"]
 
 
 def next_invoice_number(start: int) -> int:
@@ -22,8 +22,8 @@ def record_invoice_number(n: int) -> None:
     with transaction() as conn:
         conn.execute(
             """
-            INSERT INTO meta (key, value) VALUES ('lastInvoiceNumber', ?)
-            ON CONFLICT (key) DO UPDATE SET value = max(value, excluded.value)
+            INSERT INTO invoicing_counter (id, last_invoice_number) VALUES (1, ?)
+            ON CONFLICT (id) DO UPDATE SET last_invoice_number = max(last_invoice_number, excluded.last_invoice_number)
             """,
             (n,),
         )

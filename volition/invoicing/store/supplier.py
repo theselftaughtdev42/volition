@@ -7,13 +7,13 @@ from volition.invoicing.models import Supplier
 def load_supplier() -> Supplier | None:
     """None until it has been saved: the app's first run."""
     with transaction() as conn:
-        row = conn.execute("SELECT value FROM meta WHERE key = 'supplier'").fetchone()
-    return None if row is None else Supplier.model_validate_json(row["value"])
+        row = conn.execute("SELECT data FROM invoicing_supplier").fetchone()
+    return None if row is None else Supplier.model_validate_json(row["data"])
 
 
 def save_supplier(supplier: Supplier) -> None:
     with transaction() as conn:
         conn.execute(
-            "INSERT INTO meta (key, value) VALUES ('supplier', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            "INSERT INTO invoicing_supplier (id, data) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data",
             (supplier.model_dump_json(by_alias=True),),
         )

@@ -15,7 +15,8 @@ class NavLink:
 
 @dataclass(frozen=True)
 class Module:
-    #: e.g. "invoicing": names the module's template namespace.
+    #: e.g. "invoicing": the module's URL prefix, template namespace, migration namespace and table prefix
+    #: ("invoicing_clients"). Never "core", which versions the shell's own tables.
     slug: str
     title: str
     #: One line saying what the module does.
@@ -23,7 +24,8 @@ class Module:
     router: APIRouter
     #: The module's own pages, in nav order.
     nav: tuple[NavLink, ...]
-    #: SQL scripts, one per schema version. Append new steps, never edit applied ones.
+    #: SQL scripts, one per schema version, applied after core's and earlier modules'. Append new steps, never edit
+    #: applied ones.
     migrations: tuple[str, ...]
     #: The module's template directory, loaded as "<slug>/...".
     templates: Path

@@ -10,7 +10,7 @@ from volition.invoicing.models import ClientDetails, ClientRecord, PresetLineIte
 
 def _record(conn: sqlite3.Connection, row: sqlite3.Row) -> ClientRecord:
     items = conn.execute(
-        "SELECT description, detail, rate FROM client_line_items WHERE client_id = ? ORDER BY position",
+        "SELECT description, detail, rate FROM invoicing_client_line_items WHERE client_id = ? ORDER BY position",
         (row["id"],),
     ).fetchall()
     return ClientRecord(
@@ -29,13 +29,13 @@ def _record(conn: sqlite3.Connection, row: sqlite3.Row) -> ClientRecord:
 def list_clients() -> list[ClientRecord]:
     """Alphabetical by name."""
     with transaction() as conn:
-        rows = conn.execute("SELECT * FROM clients ORDER BY name, id").fetchall()
+        rows = conn.execute("SELECT * FROM invoicing_clients ORDER BY name, id").fetchall()
         return [_record(conn, row) for row in rows]
 
 
 def get_client(client_id: str) -> ClientRecord | None:
     with transaction() as conn:
-        row = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,)).fetchone()
+        row = conn.execute("SELECT * FROM invoicing_clients WHERE id = ?", (client_id,)).fetchone()
         return None if row is None else _record(conn, row)
 
 
@@ -54,25 +54,25 @@ def _write(conn: sqlite3.Connection, client_id: str, details: ClientDetails, *, 
     try:
         if insert:
             conn.execute(
-                "INSERT INTO clients (id, name, contact, email, address, vat, unit, notes)"
+                "INSERT INTO invoicing_clients (id, name, contact, email, address, vat, unit, notes)"
                 " VALUES (:id, :name, :contact, :email, :address, :vat, :unit, :notes)",
                 values,
             )
         else:
             cursor = conn.execute(
-                "UPDATE clients SET name = :name, contact = :contact, email = :email, address = :address,"
+                "UPDATE invoicing_clients SET name = :name, contact = :contact, email = :email, address = :address,"
                 " vat = :vat, unit = :unit, notes = :notes WHERE id = :id",
                 values,
             )
             if cursor.rowcount == 0:
                 return False
     except sqlite3.IntegrityError as e:
-        if "clients.name" in str(e):
+        if "invoicing_clients.name" in str(e):
             raise ValidationError("client", [f"A client named {details.name} already exists"]) from None
         raise
-    conn.execute("DELETE FROM client_line_items WHERE client_id = ?", (client_id,))
+    conn.execute("DELETE FROM invoicing_client_line_items WHERE client_id = ?", (client_id,))
     conn.executemany(
-        "INSERT INTO client_line_items (client_id, position, description, detail, rate) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO invoicing_client_line_items (client_id, position, description, detail, rate) VALUES (?, ?, ?, ?, ?)",
         [(client_id, i, item.description, item.detail, item.rate) for i, item in enumerate(details.line_items)],
     )
     return True
@@ -97,4 +97,4 @@ def update_client(client_id: str, details: ClientDetails) -> ClientRecord | None
 def delete_client(client_id: str) -> bool:
     """Deletes the client and (by cascade) its line items. False if there was no such client."""
     with transaction() as conn:
-        return conn.execute("DELETE FROM clients WHERE id = ?", (client_id,)).rowcount > 0
+        return conn.execute("DELETE FROM invoicing_clients WHERE id = ?", (client_id,)).rowcount > 0

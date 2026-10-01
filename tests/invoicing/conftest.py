@@ -18,7 +18,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 @pytest.fixture(autouse=True)
 def schema(isolated_dirs: Path) -> None:
     """Invoicing's tables, as the app creates them at startup, for tests that use the store directly."""
-    db.migrate(invoicing.module.migrations)
+    db.migrate([invoicing.module])
 
 
 @pytest.fixture

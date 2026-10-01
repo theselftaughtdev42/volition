@@ -1,13 +1,11 @@
 import json
 import re
-import sqlite3
 import uuid
 
 import pytest
 from fastapi.testclient import TestClient
 from starlette.datastructures import FormData
 
-from volition import invoicing
 from volition.core.errors import ValidationError
 from volition.core.store import db
 from volition.invoicing.models import ClientDetails, PresetLineItem
@@ -77,22 +75,14 @@ def test_deleting_a_client_cascades_to_its_line_items() -> None:
     assert delete_client(created.id) is True
     assert get_client(created.id) is None
     with db.transaction() as conn:
-        assert conn.execute("SELECT count(*) FROM client_line_items").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM invoicing_client_line_items").fetchone()[0] == 0
 
 
 def test_a_failed_transaction_rolls_back() -> None:
     with pytest.raises(RuntimeError), db.transaction() as conn:
-        conn.execute("INSERT INTO clients (id, name, address) VALUES ('x', 'Rolled back', 'a')")
+        conn.execute("INSERT INTO invoicing_clients (id, name, address) VALUES ('x', 'Rolled back', 'a')")
         raise RuntimeError
     assert list_clients() == []
-
-
-def test_migrations_apply_once_and_record_the_schema_version() -> None:
-    db.migrate(invoicing.module.migrations)
-    db.migrate(invoicing.module.migrations)
-    conn = sqlite3.connect(db.db_path())
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == len(invoicing.module.migrations)
-    conn.close()
 
 
 # --- Client form ---
@@ -173,7 +163,9 @@ def test_editing_a_client(client: TestClient) -> None:
     assert '<option value="no" selected>No VAT</option>' in page
     assert f'action="/invoicing/clients/{stored.id}/delete"' in page
 
-    res = client.post(f"/invoicing/clients/{stored.id}", data={**CLIENT_FORM, "name": "Acme Group"}, follow_redirects=False)
+    res = client.post(
+        f"/invoicing/clients/{stored.id}", data={**CLIENT_FORM, "name": "Acme Group"}, follow_redirects=False
+    )
     assert res.status_code == 303
     assert get_client(stored.id).name == "Acme Group"  # type: ignore[union-attr]
 

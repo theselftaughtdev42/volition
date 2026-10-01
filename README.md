@@ -46,7 +46,7 @@ Clients are managed at `/clients` and stored in `DATA_DIR/volition.db`. Each has
 
 The invoice form bills whichever client is chosen from its dropdown, exactly as stored: fix a client's details on its page rather than on the invoice. Choosing a client replaces the VAT, unit, line items and notes with that client's defaults. A lone client is preselected; with several, one must be chosen. Names are unique, ignoring case, and client ids are UUIDv7s.
 
-The schema is migrated on startup (see `MIGRATIONS` in `volition/store/db.py`, tracked by `PRAGMA user_version`).
+The schema is migrated on startup (see `MIGRATIONS` in `volition/invoicing/store/schema.py`, tracked by `PRAGMA user_version`).
 
 ## Environment
 

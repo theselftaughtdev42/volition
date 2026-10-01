@@ -15,7 +15,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from volition.core.config import ROOT, allowed_hosts
+from volition.core.config import ROOT, allowed_hosts, timezone
 from volition.core.errors import ValidationError
 from volition.core.modules import Module
 from volition.core.store import db
@@ -34,7 +34,8 @@ def create_app(modules: Sequence[Module], bootstrap: db.Bootstrap | None = None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        # Fail fast on a database that can't be migrated rather than on the first request.
+        # Fail fast on an unknown TIMEZONE or a database that can't be migrated rather than on the first request.
+        timezone()
         db.migrate(modules, bootstrap)
         yield
 

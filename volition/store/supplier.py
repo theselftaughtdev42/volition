@@ -1,7 +1,7 @@
 """The supplier (who invoices are from): entered on the Supplier page (first on the first run) and stored in the database."""
 
-from volition.db import transaction
-from volition.invoice import Supplier
+from volition.models import Supplier
+from volition.store.db import transaction
 
 
 def load_supplier() -> Supplier | None:

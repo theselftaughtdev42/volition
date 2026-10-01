@@ -46,7 +46,7 @@ Clients are managed at `/clients` and stored in `DATA_DIR/volition.db`. Each has
 
 The invoice form bills whichever client is chosen from its dropdown, exactly as stored: fix a client's details on its page rather than on the invoice. Choosing a client replaces the VAT, unit, line items and notes with that client's defaults. A lone client is preselected; with several, one must be chosen. Names are unique, ignoring case, and client ids are UUIDv7s.
 
-The schema is migrated on startup (see `MIGRATIONS` in `volition/db.py`, tracked by `PRAGMA user_version`).
+The schema is migrated on startup (see `MIGRATIONS` in `volition/store/db.py`, tracked by `PRAGMA user_version`).
 
 ## Environment
 
@@ -60,7 +60,7 @@ The schema is migrated on startup (see `MIGRATIONS` in `volition/db.py`, tracked
 ## Invoice rules
 
 - Everything is in GBP. Quantities and rates are whole numbers (rates in whole pounds); money is integer pence internally.
-- `lineTotal = quantity × rate`; `vat = subtotal × 20%` (`VAT_PERCENT` in `volition/invoice.py`) when the VAT box is ticked; `total = subtotal + vat`.
+- `lineTotal = quantity × rate`; `vat = subtotal × 20%` (`VAT_PERCENT` in `volition/invoicing.py`) when the VAT box is ticked; `total = subtotal + vat`.
 - Unticked VAT hides the VAT row and the VAT number.
 - Dates print as `19 Sep 2026`, the period as `1 Sep – 30 Sep 2026`, money as `£4,250.00`.
 - Long invoices continue onto further pages with the table header repeated; the totals block never splits.

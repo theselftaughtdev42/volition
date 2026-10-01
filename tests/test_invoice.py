@@ -1,10 +1,6 @@
 from datetime import date, datetime
 
-from volition.invoice import (
-    Invoice,
-    LineItem,
-    Period,
-    Supplier,
+from volition.invoicing import (
     Totals,
     build_view_model,
     compute_totals,
@@ -13,6 +9,7 @@ from volition.invoice import (
     local_iso_date,
     month_period,
 )
+from volition.models import Invoice, LineItem, Period, Supplier
 
 
 def test_example_invoice_totals_match_the_spec(invoice: Invoice, supplier: Supplier) -> None:

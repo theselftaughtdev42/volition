@@ -5,9 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import SUPPLIER
-from volition.invoice import BankDetails, Supplier
-from volition.main import app
-from volition.supplier import load_supplier, save_supplier
+from volition.models import BankDetails, Supplier
+from volition.store.supplier import load_supplier, save_supplier
+from volition.web.app import app
 
 
 @pytest.fixture

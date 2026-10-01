@@ -7,18 +7,12 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.datastructures import FormData
 
-from volition import db
-from volition.clients import (
-    ClientDetails,
-    ClientLineItem,
-    create_client,
-    delete_client,
-    get_client,
-    list_clients,
-    update_client,
-)
-from volition.config import ValidationError
-from volition.form import parse_invoice_form
+from volition.errors import ValidationError
+from volition.models import ClientDetails, PresetLineItem
+from volition.store import db
+from volition.store.clients import create_client, delete_client, get_client, list_clients, update_client
+from volition.store.invoice_numbers import next_invoice_number
+from volition.web.pages.invoice import parse_invoice_form
 
 ACME = ClientDetails(
     name="Acme Ltd",
@@ -27,7 +21,7 @@ ACME = ClientDetails(
     email="ap@acme.co.uk",
     vat=False,
     unit="hours",
-    line_items=[ClientLineItem(description="Support", rate=90), ClientLineItem(description="Travel")],
+    line_items=[PresetLineItem(description="Support", rate=90), PresetLineItem(description="Travel")],
     notes="PO 123",
 )
 
@@ -65,7 +59,7 @@ def test_renaming_onto_another_clients_name_is_rejected() -> None:
 
 def test_updating_replaces_details_and_line_items() -> None:
     created = create_client(ACME)
-    changed = ClientDetails(name="Acme Group", address=["2 Road"], line_items=[ClientLineItem(description="Build")])
+    changed = ClientDetails(name="Acme Group", address=["2 Road"], line_items=[PresetLineItem(description="Build")])
     updated = update_client(created.id, changed)
     assert updated is not None and get_client(created.id) == updated
     assert updated.vat is None and [i.description for i in updated.line_items] == ["Build"]
@@ -86,10 +80,9 @@ def test_deleting_a_client_cascades_to_its_line_items() -> None:
 
 
 def test_a_failed_transaction_rolls_back() -> None:
-    with pytest.raises(RuntimeError):
-        with db.transaction() as conn:
-            conn.execute("INSERT INTO clients (id, name, address) VALUES ('x', 'Rolled back', 'a')")
-            raise RuntimeError
+    with pytest.raises(RuntimeError), db.transaction() as conn:
+        conn.execute("INSERT INTO clients (id, name, address) VALUES ('x', 'Rolled back', 'a')")
+        raise RuntimeError
     assert list_clients() == []
 
 
@@ -208,7 +201,7 @@ def test_new_client_form(client: TestClient) -> None:
 
 
 def client_data(html: str) -> list[dict]:
-    match = re.search(r'<script type="application/json" id="client-data">(.*?)</script>', html, re.S)
+    match = re.search(r'<script type="application/json" id="client-data">(.*?)</script>', html, re.DOTALL)
     assert match
     return json.loads(match.group(1))
 
@@ -282,4 +275,4 @@ def test_the_invoice_bills_the_stored_client(client: TestClient) -> None:
     }
     res = client.post("/invoice", data=body)
     assert res.status_code == 200, res.text
-    assert db.next_invoice_number(1) == 8
+    assert next_invoice_number(1) == 8

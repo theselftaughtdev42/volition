@@ -2,22 +2,12 @@
 
 import base64
 
-from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 from volition.config import ROOT
-from volition.invoice import Invoice, Supplier, build_view_model
-
-templates = Environment(
-    loader=FileSystemLoader(ROOT / "templates"),
-    autoescape=True,
-    # Drop whole lines holding only a block tag, as Handlebars does for standalone tags.
-    trim_blocks=True,
-    lstrip_blocks=True,
-    keep_trailing_newline=True,
-    # Absent optional values print nothing, as in Handlebars.
-    finalize=lambda value: "" if value is None else value,
-)
+from volition.invoicing import build_view_model
+from volition.models import Invoice, Supplier
+from volition.templates import templates
 
 
 def _data_uri(file: str, mime: str) -> str:

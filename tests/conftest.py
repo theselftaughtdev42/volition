@@ -4,11 +4,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from volition.clients import ClientLineItem
-from volition.defaults import Defaults, save_defaults
-from volition.invoice import Invoice, Supplier
-from volition.main import app
-from volition.supplier import save_supplier
+from volition.models import Defaults, Invoice, PresetLineItem, Supplier
+from volition.store.defaults import save_defaults
+from volition.store.supplier import save_supplier
+from volition.web.app import app
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -39,7 +38,7 @@ DEFAULTS = Defaults(
     invoice_number_start=1,
     vat=True,
     unit="days",
-    line_items=[ClientLineItem(description="IT & Software Consultancy Services", rate=650)],
+    line_items=[PresetLineItem(description="IT & Software Consultancy Services", rate=650)],
 )
 
 

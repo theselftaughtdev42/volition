@@ -1,44 +1,11 @@
-"""Clients the invoice form bills, stored in the database with their own invoice defaults."""
+"""Clients the invoice form bills, with their own invoice defaults."""
 
 import sqlite3
 import uuid
-from typing import Annotated
 
-from pydantic import EmailStr, Field
-
-from volition.config import ValidationError
-from volition.db import transaction
-from volition.invoice import Client, Model, Unit
-
-
-class ClientLineItem(Model):
-    """A line an invoice for this client starts with. Quantities vary per invoice, so there is none here."""
-
-    description: Annotated[str, Field(min_length=1)]
-    detail: str | None = None
-    rate: Annotated[int, Field(ge=0)] | None = None
-
-
-class ClientDetails(Model):
-    """Everything about a client that the client form edits."""
-
-    name: Annotated[str, Field(min_length=1)]
-    contact: str | None = None
-    address: Annotated[list[str], Field(min_length=1)]
-    email: EmailStr | None = None
-    #: Invoice defaults for this client; None falls back to the global defaults.
-    vat: bool | None = None
-    unit: Unit | None = None
-    line_items: list[ClientLineItem] = []
-    notes: str | None = None
-
-    def bill_to(self) -> Client:
-        return Client(name=self.name, contact=self.contact, address=self.address, email=self.email)
-
-
-class ClientRecord(ClientDetails):
-    #: A UUIDv7, as text.
-    id: str
+from volition.errors import ValidationError
+from volition.models import ClientDetails, ClientRecord, PresetLineItem
+from volition.store.db import transaction
 
 
 def _record(conn: sqlite3.Connection, row: sqlite3.Row) -> ClientRecord:
@@ -54,7 +21,7 @@ def _record(conn: sqlite3.Connection, row: sqlite3.Row) -> ClientRecord:
         email=row["email"],
         vat=None if row["vat"] is None else bool(row["vat"]),
         unit=row["unit"],
-        line_items=[ClientLineItem(description=i["description"], detail=i["detail"], rate=i["rate"]) for i in items],
+        line_items=[PresetLineItem(description=i["description"], detail=i["detail"], rate=i["rate"]) for i in items],
         notes=row["notes"],
     )
 

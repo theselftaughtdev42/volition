@@ -92,18 +92,31 @@ def upgraded() -> Iterator[TestClient]:
         yield c
 
 
-def test_the_supplier_carries_over(upgraded: TestClient) -> None:
-    page = upgraded.get("/invoicing/supplier").text
-    for value in ["Mackay Software Limited", "15289765", "GB 459 3303 82", "21", "Monzo", "12-34-56", "87654321"]:
+def test_the_suppliers_identity_becomes_the_business(upgraded: TestClient) -> None:
+    page = upgraded.get("/business").text
+    assert "Welcome." not in page
+    for value in [
+        "Mackay Software",
+        "Mackay Software Limited",
+        "tim@mackaysoftware.com",
+        "www.mackaysoftware.com",
+        "15289765",
+        "England &amp; Wales",
+        "GB 459 3303 82",
+    ]:
         assert f'value="{value}"' in page
-    assert "Altrincham, Cheshire" in page
+    assert "Mansion House, Manchester Rd\nAltrincham, Cheshire\nWA14 4RW</textarea>" in page
+    assert '<span class="label">Mackay Software Limited</span>' in page
 
 
-def test_the_defaults_carry_over(upgraded: TestClient) -> None:
-    page = upgraded.get("/invoicing/defaults").text
-    assert 'value="7"' in page and 'value="Retained support"' in page and 'value="95"' in page
+def test_the_defaults_payment_terms_and_bank_details_become_the_invoicing_settings(upgraded: TestClient) -> None:
+    page = upgraded.get("/invoicing/settings").text
+    assert "Before the first invoice" not in page
+    for value in ["7", "Retained support", "95", "21", "Monzo", "Mackay Software Limited", "12-34-56", "87654321"]:
+        assert f'value="{value}"' in page
     assert "Thanks for your business" in page
     assert '<option value="hours" selected>' in page
+    assert 'name="vat" type="checkbox" checked' in page
 
 
 def test_the_clients_and_their_line_items_carry_over(upgraded: TestClient) -> None:
@@ -135,14 +148,29 @@ def test_invoices_print_the_old_supplier_and_bank_details(upgraded: TestClient) 
     res = upgraded.post("/invoicing/invoice", data=body)
     assert res.status_code == 200, res.text
     text = "".join(page.extract_text() for page in PdfReader(BytesIO(res.content)).pages)
-    for value in ["Mackay Software Limited", "Acme Ltd", "12-34-56", "87654321", "21 days"]:
-        assert value in text
+    for value in [
+        "Mackay Software Limited",
+        "Mansion House, Manchester Rd",
+        "Registered in England & Wales no. 15289765",
+        "Acme Ltd",
+        "Bank transfer within 21 days.",
+        "22 Oct 2026",  # due: issue date + the old payment terms
+        "Monzo",
+        "12-34-56",
+        "87654321",
+    ]:
+        assert value in text, value
     assert "Next in sequence: MS-0043" in upgraded.get("/invoicing/").text
 
 
 @pytest.mark.parametrize(
     ("meta", "first_page"),
-    [({}, "/invoicing/supplier"), ({"supplier": SUPPLIER}, "/invoicing/defaults")],
+    [
+        ({}, "/business"),
+        # The settings need the defaults as well as the supplier's bank details.
+        ({"supplier": SUPPLIER}, "/invoicing/settings"),
+        ({"defaults": DEFAULTS}, "/business"),
+    ],
 )
 def test_an_upgraded_database_whose_setup_was_never_completed_lands_in_the_first_run(
     meta: dict[str, str], first_page: str
@@ -185,11 +213,11 @@ def test_a_fresh_database_and_an_upgraded_one_have_the_same_schema(
     assert schema() == fresh
     objects, versions, _ = fresh
     assert [name for type_, name, *_ in objects if type_ == "table"] == [
+        "business",
         "invoicing_client_line_items",
         "invoicing_clients",
         "invoicing_counter",
-        "invoicing_defaults",
-        "invoicing_supplier",
+        "invoicing_settings",
         "schema_versions",
     ]
     assert versions == {"core": 1, "invoicing": 1}

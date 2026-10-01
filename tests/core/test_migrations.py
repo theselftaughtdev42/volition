@@ -6,7 +6,7 @@ from collections.abc import Sequence
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.core.test_app import fake_module
+from tests.core.conftest import fake_module
 from volition.core.app import create_app
 from volition.core.modules import Module
 from volition.core.store import db
@@ -51,7 +51,7 @@ def modules(savings: tuple[str, ...] = SAVINGS) -> list[Module]:
 def test_a_fresh_database_gets_core_then_each_module_in_registration_order() -> None:
     start(modules())
     assert versions() == {"core": 1, "assets": 1, "savings": 2}
-    assert tables() == ["assets_items", "savings_log", "schema_versions"]
+    assert tables() == ["assets_items", "business", "savings_log", "schema_versions"]
     assert query("SELECT entry FROM savings_log") == [("assets=1",), ("core=1",), ("second",)]
 
 
@@ -113,7 +113,7 @@ def test_a_pre_module_database_is_bootstrapped_then_migrated_as_usual() -> None:
     assert versions() == {"core": 1, "assets": 1, "savings": 2}
     # Assets wasn't in the bootstrap's versions, so got its migration after savings' first.
     assert query("SELECT entry FROM savings_log") == [("core=1",), ("moved old",), ("second",)]
-    assert tables() == ["assets_items", "savings_log", "schema_versions"]
+    assert tables() == ["assets_items", "business", "savings_log", "schema_versions"]
     assert query("PRAGMA user_version") == [(0,)]
 
 

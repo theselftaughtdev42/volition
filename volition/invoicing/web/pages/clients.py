@@ -10,9 +10,8 @@ from volition.core.web.deps import FormDep
 from volition.core.web.forms import FormBody, field, lines, validate_form
 from volition.core.web.shell import Shell, ShellDep
 from volition.invoicing.invoices import VAT_PERCENT
-from volition.invoicing.models import ClientDetails, ClientRecord, Supplier
+from volition.invoicing.models import ClientDetails, ClientRecord
 from volition.invoicing.store.clients import create_client, delete_client, get_client, list_clients, update_client
-from volition.invoicing.web.deps import NEEDS_DEFAULTS, SupplierDep
 from volition.invoicing.web.forms import parse_preset_lines, submitted_preset_lines
 from volition.invoicing.web.pages import PREFIX, render_page
 
@@ -24,40 +23,40 @@ def _see_clients() -> RedirectResponse:
     return RedirectResponse(f"{PREFIX}/clients", status_code=303)
 
 
-@router.get("/clients", response_class=HTMLResponse, dependencies=NEEDS_DEFAULTS)
-def clients_page(shell: ShellDep, supplier: SupplierDep) -> HTMLResponse:
-    return HTMLResponse(render_clients(shell, supplier, list_clients()))
+@router.get("/clients", response_class=HTMLResponse)
+def clients_page(shell: ShellDep) -> HTMLResponse:
+    return HTMLResponse(render_clients(shell, list_clients()))
 
 
-@router.get("/clients/new", response_class=HTMLResponse, dependencies=NEEDS_DEFAULTS)
-def new_client_form(shell: ShellDep, supplier: SupplierDep) -> HTMLResponse:
-    return HTMLResponse(render_client_form(shell, supplier, client_form_values()))
+@router.get("/clients/new", response_class=HTMLResponse)
+def new_client_form(shell: ShellDep) -> HTMLResponse:
+    return HTMLResponse(render_client_form(shell, client_form_values()))
 
 
 @router.post("/clients", response_model=None)
-def add_client(form: FormDep, shell: ShellDep, supplier: SupplierDep) -> Response:
+def add_client(form: FormDep, shell: ShellDep) -> Response:
     try:
         create_client(parse_client_form(form))
     except ValidationError as e:
-        html = render_client_form(shell, supplier, submitted_client_values(form), errors=e.errors)
+        html = render_client_form(shell, submitted_client_values(form), errors=e.errors)
         return HTMLResponse(html, status_code=422)
     return _see_clients()
 
 
-@router.get("/clients/{client_id}", response_class=HTMLResponse, dependencies=NEEDS_DEFAULTS)
-def edit_client_form(client_id: str, shell: ShellDep, supplier: SupplierDep) -> HTMLResponse:
+@router.get("/clients/{client_id}", response_class=HTMLResponse)
+def edit_client_form(client_id: str, shell: ShellDep) -> HTMLResponse:
     client = get_client(client_id)
     if client is None:
         raise HTTPException(404, "No such client")
-    return HTMLResponse(render_client_form(shell, supplier, client_form_values(client), client_id))
+    return HTMLResponse(render_client_form(shell, client_form_values(client), client_id))
 
 
 @router.post("/clients/{client_id}", response_model=None)
-def save_client(client_id: str, form: FormDep, shell: ShellDep, supplier: SupplierDep) -> Response:
+def save_client(client_id: str, form: FormDep, shell: ShellDep) -> Response:
     try:
         saved = update_client(client_id, parse_client_form(form))
     except ValidationError as e:
-        html = render_client_form(shell, supplier, submitted_client_values(form), client_id, e.errors)
+        html = render_client_form(shell, submitted_client_values(form), client_id, e.errors)
         return HTMLResponse(html, status_code=422)
     if saved is None:
         raise HTTPException(404, "No such client")
@@ -71,18 +70,16 @@ def remove_client(client_id: str) -> RedirectResponse:
     return _see_clients()
 
 
-def render_clients(shell: Shell, supplier: Supplier, clients: list[ClientRecord]) -> str:
+def render_clients(shell: Shell, clients: list[ClientRecord]) -> str:
     return render_page(
         "clients.html",
         shell,
-        supplier,
         clients=[client.model_dump(by_alias=True, exclude_none=True) for client in clients],
     )
 
 
 def render_client_form(
     shell: Shell,
-    supplier: Supplier,
     values: dict[str, Any],
     client_id: str | None = None,
     errors: list[str] | None = None,
@@ -90,7 +87,6 @@ def render_client_form(
     return render_page(
         "client.html",
         shell,
-        supplier,
         vatPercent=VAT_PERCENT,
         values=values,
         client_id=client_id,

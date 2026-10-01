@@ -1,4 +1,4 @@
-"""Every model invoicing validates, stores or renders: invoices, the supplier, clients and the invoice defaults.
+"""Every model invoicing validates, stores or renders: invoices, clients and the invoicing settings.
 
 Money is held in integer pence throughout. Quantities and rates are whole
 numbers, and all invoices are in GBP.
@@ -7,21 +7,11 @@ numbers, and all invoices are in GBP.
 from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from pydantic.alias_generators import to_camel
+from pydantic import EmailStr, Field
+
+from volition.core.models import Model
 
 Unit = Literal["days", "hours", "items"]
-
-
-class Model(BaseModel):
-    """camelCase JSON keys (snake_case also accepted), unknown keys rejected.
-
-    Strict, like the JSON schemas these replace: no "10" for an int or "true" for a bool.
-    Validate JSON text with `model_validate_json` (which accepts ISO date strings).
-    Patterns use [0-9] because Pydantic's regex digit class also matches non-ASCII digits.
-    """
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid", strict=True)
 
 
 class LineItem(Model):
@@ -49,7 +39,7 @@ class Client(Model):
 class Invoice(Model):
     number: Annotated[str, Field(pattern=r"^MS-[0-9]{4,}$")]
     issue_date: date
-    #: Defaults to issue_date + supplier.payment_terms_days.
+    #: Defaults to issue_date + settings.payment_terms_days.
     due_date: date | None = None
     #: Service period the invoice covers; the form defaults it to the current month.
     period: Period | None = None
@@ -68,21 +58,8 @@ class BankDetails(Model):
     account_number: Annotated[str, Field(pattern=r"^[0-9]{8}$")]
 
 
-class Supplier(Model):
-    name: str
-    legal_name: str
-    address: list[str]
-    website: str | None = None
-    email: EmailStr
-    company_number: str
-    registered_in: str
-    vat_number: str | None = None
-    payment_terms_days: Annotated[int, Field(ge=0)]
-    bank: BankDetails
-
-
 class PresetLineItem(Model):
-    """A line an invoice starts with, from a client or the defaults. Quantities vary per invoice, so there is none here."""
+    """A line an invoice starts with, from a client or the settings' defaults. Quantities vary per invoice, so there is none here."""
 
     description: Annotated[str, Field(min_length=1)]
     detail: str | None = None
@@ -96,10 +73,10 @@ class ClientDetails(Model):
     contact: str | None = None
     address: Annotated[list[str], Field(min_length=1)]
     email: EmailStr | None = None
-    #: Invoice defaults for this client; None falls back to the global defaults.
+    #: Invoice defaults for this client; None falls back to the settings' defaults.
     vat: bool | None = None
     unit: Unit | None = None
-    line_items: list[PresetLineItem] = []
+    line_items: list[PresetLineItem] = Field(default_factory=list)
     notes: str | None = None
 
     def bill_to(self) -> Client:
@@ -111,10 +88,10 @@ class ClientRecord(ClientDetails):
     id: str
 
 
-class Defaults(Model):
-    """Pre-filled values for the invoice form, used where the chosen client sets none.
+class InvoicingSettings(Model):
+    """Everything invoices need beyond the business: the invoice form's defaults, payment terms and bank details.
 
-    Everything can be overridden per invoice.
+    The defaults pre-fill the invoice form where the chosen client sets none, and can be overridden per invoice.
     """
 
     #: Number used when no invoice has been generated yet (1 → MS-0001).
@@ -122,5 +99,8 @@ class Defaults(Model):
     #: Whether the VAT box starts ticked.
     vat: bool
     unit: Unit
-    line_items: list[PresetLineItem] = []
+    line_items: list[PresetLineItem] = Field(default_factory=list)
     notes: str | None = None
+    payment_terms_days: Annotated[int, Field(ge=0)]
+    #: Where invoices ask to be paid.
+    bank: BankDetails

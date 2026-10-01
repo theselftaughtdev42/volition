@@ -25,3 +25,7 @@ def environment(namespaces: Mapping[str, Path]) -> Environment:
         # Absent optional values print nothing, as in Handlebars.
         finalize=lambda value: "" if value is None else value,
     )
+
+
+#: The shell's own pages.
+templates = environment({})

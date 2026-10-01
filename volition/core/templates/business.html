@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Supplier · Volition{% endblock %}
+{% block title %}Business · Volition{% endblock %}
 {% block content %}
-  <form id="supplier" method="post" action="/invoicing/supplier">
+  <form id="business" method="post" action="/business">
     {% if first_run %}
-    <p class="intro">Welcome. First, who are invoices from? Everything here is printed on each invoice; you can change it on this page later.</p>
+    <p class="intro">Welcome. First, whose business is this? Every module can use these details; you can change them on this page later.</p>
     {% endif %}
     <fieldset>
       <legend>Company</legend>
@@ -38,29 +38,6 @@
         </label>
         <label><span class="label">VAT number</span>
           <input name="vatNumber" value="{{ values.vatNumber }}">
-          <span class="hint">Printed on invoices that charge VAT</span>
-        </label>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Payment</legend>
-      <div class="grid">
-        <label><span class="label">Payment terms</span>
-          <span class="prefixed"><input name="paymentTermsDays" type="number" min="0" step="1" required value="{{ values.paymentTermsDays }}"> days</span>
-          <span class="hint">Due date when an invoice sets none</span>
-        </label>
-        <label><span class="label">Bank</span>
-          <input name="bankName" required value="{{ values.bankName }}" placeholder="Monzo">
-        </label>
-        <label><span class="label">Account name</span>
-          <input name="accountName" required value="{{ values.accountName }}">
-        </label>
-        <label><span class="label">Sort code</span>
-          <input name="sortCode" required inputmode="numeric" value="{{ values.sortCode }}" placeholder="00-00-00">
-        </label>
-        <label><span class="label">Account number</span>
-          <input name="accountNumber" required inputmode="numeric" value="{{ values.accountNumber }}" placeholder="00000000">
         </label>
       </div>
     </fieldset>
@@ -75,7 +52,7 @@
 
     <div class="actions">
       <button type="submit" class="primary">{{ "Save and continue" if first_run else "Save" }}</button>
-      {% if not first_run %}<a href="/invoicing/">Cancel</a>{% endif %}
+      {% if not first_run %}<a href="/">Cancel</a>{% endif %}
     </div>
   </form>
 {% endblock %}

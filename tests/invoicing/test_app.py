@@ -9,7 +9,8 @@ from pypdf import PdfReader
 from starlette.datastructures import FormData
 
 from volition.core.errors import ValidationError, validate
-from volition.invoicing.models import ClientDetails, ClientRecord, Invoice, LineItem, Supplier
+from volition.core.models import Business
+from volition.invoicing.models import ClientDetails, ClientRecord, Invoice, InvoicingSettings, LineItem
 from volition.invoicing.pdf import render_html, render_pdf
 from volition.invoicing.store.clients import create_client
 from volition.invoicing.store.invoice_numbers import next_invoice_number, record_invoice_number
@@ -110,9 +111,11 @@ def test_schema_errors_are_reported_with_their_location() -> None:
     assert [e.split(" ")[0] for e in exc.value.errors] == ["/unit"]
 
 
-def test_the_notes_section_only_appears_when_notes_are_given(invoice: Invoice, supplier: Supplier) -> None:
-    assert not re.search(r">Notes<", render_html(invoice, supplier))
-    html = render_html(invoice.model_copy(update={"notes": "Paid in advance"}), supplier)
+def test_the_notes_section_only_appears_when_notes_are_given(
+    invoice: Invoice, business: Business, settings: InvoicingSettings
+) -> None:
+    assert not re.search(r">Notes<", render_html(invoice, business, settings))
+    html = render_html(invoice.model_copy(update={"notes": "Paid in advance"}), business, settings)
     assert re.search(r">Notes<[\s\S]*Paid in advance", html)
 
 
@@ -140,9 +143,9 @@ def inspect_pdf(pdf: bytes) -> PdfInfo:
 
 
 def test_example_invoice_renders_to_one_a4_page_with_embedded_jetbrains_mono_and_a_vector_logo(
-    invoice: Invoice, supplier: Supplier
+    invoice: Invoice, business: Business, settings: InvoicingSettings
 ) -> None:
-    info = inspect_pdf(render_pdf(invoice, supplier))
+    info = inspect_pdf(render_pdf(invoice, business, settings))
     assert info.pages == 1
     assert info.fonts and all(f.replace("-", "").startswith("JetBrainsMono") for f in info.fonts), (
         f"fonts: {info.fonts}"
@@ -152,9 +155,11 @@ def test_example_invoice_renders_to_one_a4_page_with_embedded_jetbrains_mono_and
     assert abs(width - 595.28) < 1 and abs(height - 841.89) < 1, f"MediaBox {width}×{height}"
 
 
-def test_a_25_line_invoice_paginates_beyond_the_first_page(invoice: Invoice, supplier: Supplier) -> None:
+def test_a_25_line_invoice_paginates_beyond_the_first_page(
+    invoice: Invoice, business: Business, settings: InvoicingSettings
+) -> None:
     items = [LineItem(description=f"Task {i + 1}", detail="Detail", quantity=1, rate=100) for i in range(25)]
-    info = inspect_pdf(render_pdf(invoice.model_copy(update={"line_items": items}), supplier))
+    info = inspect_pdf(render_pdf(invoice.model_copy(update={"line_items": items}), business, settings))
     assert info.pages > 1, f"pages: {info.pages}"
 
 
@@ -199,11 +204,43 @@ def test_post_valid_invoice_returns_pdf_and_advances_counter(client: TestClient)
     assert "Next in sequence: MS-0043" in client.get("/invoicing/").text
 
 
+def pdf_text(pdf: bytes) -> str:
+    return "".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+
+
+def test_the_pdf_prints_the_business_payment_terms_and_bank_details(client: TestClient) -> None:
+    stored = create_client(EXAMPLE_CLIENT)
+    text = pdf_text(client.post("/invoicing/invoice", data={**FORM_BODY, "clientId": stored.id}).content)
+    for value in [
+        "Mackay Software Limited",
+        "Mansion House, Manchester Rd",
+        "www.mackaysoftware.com",
+        "Registered in England & Wales no. 15289765",
+        "VAT no. GB 459 3303 82",
+        "Bank transfer within 30 days.",
+        "19 Oct 2026",  # due: issue date + payment terms
+        "Monzo",
+        "00-00-00",
+        "00000000",
+    ]:
+        assert value in text, value
+
+
 @pytest.mark.parametrize(
     ("method", "path"),
-    [("GET", "/clients"), ("GET", "/clients/new"), ("GET", "/supplier"), ("GET", "/defaults"), ("POST", "/invoice")],
+    [
+        ("GET", "/clients"),
+        ("GET", "/clients/new"),
+        ("GET", "/supplier"),
+        ("GET", "/defaults"),
+        ("POST", "/invoice"),
+        ("GET", "/invoicing/supplier"),
+        ("POST", "/invoicing/supplier"),
+        ("GET", "/invoicing/defaults"),
+        ("POST", "/invoicing/defaults"),
+    ],
 )
-def test_the_old_root_urls_are_gone(client: TestClient, method: str, path: str) -> None:
+def test_the_old_urls_are_gone(client: TestClient, method: str, path: str) -> None:
     assert client.request(method, path, follow_redirects=False).status_code == 404
 
 
@@ -218,13 +255,13 @@ def test_the_module_home_without_its_trailing_slash_redirects_to_it(client: Test
         ("/invoicing/", "/invoicing/"),
         ("/invoicing/clients", "/invoicing/clients"),
         ("/invoicing/clients/new", "/invoicing/clients"),
-        ("/invoicing/defaults", "/invoicing/defaults"),
-        ("/invoicing/supplier", "/invoicing/supplier"),
+        ("/invoicing/settings", "/invoicing/settings"),
     ],
 )
 def test_pages_mark_invoicing_and_their_own_nav_link(client: TestClient, path: str, current: str) -> None:
     page = client.get(path).text
     assert '<a href="/invoicing/" aria-current="true">Invoicing</a>' in page
     assert re.findall(r'<a href="([^"]+)" aria-current="page">', page) == [current]
-    for href in ["/invoicing/", "/invoicing/clients", "/invoicing/defaults", "/invoicing/supplier"]:
+    for href in ["/invoicing/", "/invoicing/clients", "/invoicing/settings", "/business"]:
         assert f'<a href="{href}"' in page
+    assert '<span class="label">Mackay Software Limited</span>' in page

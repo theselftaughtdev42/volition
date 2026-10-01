@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Defaults · Volition{% endblock %}
+{% block title %}Invoicing settings · Volition{% endblock %}
 {% block content %}
-  <form id="defaults" method="post" action="/invoicing/defaults">
+  <form id="settings" method="post" action="/invoicing/settings">
     {% if first_run %}
-    <p class="intro">Next, set the defaults new invoices start with; you can change them on this page later.</p>
+    <p class="intro">Before the first invoice, set what invoices start with and how they ask to be paid; you can change these on this page later.</p>
     {% endif %}
     <fieldset>
       <legend>Invoice numbers</legend>
@@ -39,6 +39,28 @@
       <label>
         <textarea name="notes" rows="2" placeholder="Blank = no notes section" aria-label="Notes">{{ values.notes }}</textarea>
       </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Payment</legend>
+      <div class="grid">
+        <label><span class="label">Payment terms</span>
+          <span class="prefixed"><input name="paymentTermsDays" type="number" min="0" step="1" required value="{{ values.paymentTermsDays }}"> days</span>
+          <span class="hint">Due date when an invoice sets none</span>
+        </label>
+        <label><span class="label">Bank</span>
+          <input name="bankName" required value="{{ values.bankName }}" placeholder="Monzo">
+        </label>
+        <label><span class="label">Account name</span>
+          <input name="accountName" required value="{{ values.accountName }}">
+        </label>
+        <label><span class="label">Sort code</span>
+          <input name="sortCode" required inputmode="numeric" value="{{ values.sortCode }}" placeholder="00-00-00">
+        </label>
+        <label><span class="label">Account number</span>
+          <input name="accountNumber" required inputmode="numeric" value="{{ values.accountNumber }}" placeholder="00000000">
+        </label>
+      </div>
     </fieldset>
 
     {% if errors %}

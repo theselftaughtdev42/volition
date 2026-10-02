@@ -14,6 +14,7 @@ def load_settings() -> InvoicingSettings | None:
 def save_settings(settings: InvoicingSettings) -> None:
     with transaction() as conn:
         conn.execute(
-            "INSERT INTO invoicing_settings (id, data) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data",
+            "INSERT INTO invoicing_settings (id, data) VALUES (1, ?)"
+            " ON CONFLICT (id) DO UPDATE SET data = excluded.data",
             (settings.model_dump_json(by_alias=True),),
         )

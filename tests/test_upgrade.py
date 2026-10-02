@@ -2,9 +2,10 @@
 
 import re
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -53,7 +54,8 @@ SUPPLIER = (
     '"address":["Mansion House, Manchester Rd","Altrincham, Cheshire","WA14 4RW"],'
     '"website":"www.mackaysoftware.com","email":"tim@mackaysoftware.com","companyNumber":"15289765",'
     '"registeredIn":"England & Wales","vatNumber":"GB 459 3303 82","paymentTermsDays":21,'
-    '"bank":{"bankName":"Monzo","accountName":"Mackay Software Limited","sortCode":"12-34-56","accountNumber":"87654321"}}'
+    '"bank":{"bankName":"Monzo","accountName":"Mackay Software Limited",'
+    '"sortCode":"12-34-56","accountNumber":"87654321"}}'
 )
 DEFAULTS = (
     '{"invoiceNumberStart":7,"vat":true,"unit":"hours",'
@@ -69,7 +71,7 @@ INSERT INTO client_line_items (client_id, position, description, detail, rate) V
 """
 
 
-def seed(meta: dict[str, str | int], data: str = "") -> Path:
+def seed(meta: Mapping[str, str | int], data: str = "") -> Path:
     """A v0.1.x database in DATA_DIR."""
     path = db.db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -178,7 +180,8 @@ def test_an_upgraded_database_whose_setup_was_never_completed_lands_in_the_first
     seed(meta)
     with started() as c:
         res = c.get("/invoicing/", follow_redirects=False)
-    assert res.status_code == 303 and res.headers["location"] == first_page
+    assert res.status_code == 303
+    assert res.headers["location"] == first_page
 
 
 def test_a_failing_upgrade_leaves_the_database_unchanged_and_fails_startup() -> None:
@@ -189,7 +192,7 @@ def test_a_failing_upgrade_leaves_the_database_unchanged_and_fails_startup() -> 
     assert path.read_bytes() == before
 
 
-def schema() -> tuple[list[tuple], dict[str, int], int]:
+def schema() -> tuple[list[tuple[Any, ...]], dict[str, int], int]:
     """Every table and index as created, the recorded module versions and user_version."""
     conn = sqlite3.connect(db.db_path())
     try:

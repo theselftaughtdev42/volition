@@ -59,7 +59,10 @@ class BankDetails(Model):
 
 
 class PresetLineItem(Model):
-    """A line an invoice starts with, from a client or the settings' defaults. Quantities vary per invoice, so there is none here."""
+    """A line an invoice starts with, from a client or the settings' defaults.
+
+    Quantities vary per invoice, so there is none here.
+    """
 
     description: Annotated[str, Field(min_length=1)]
     detail: str | None = None

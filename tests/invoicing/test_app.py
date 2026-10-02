@@ -6,7 +6,7 @@ from io import BytesIO
 import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
-from starlette.datastructures import FormData
+from starlette.datastructures import FormData, UploadFile
 
 from volition.core.errors import ValidationError, validate
 from volition.core.models import Business
@@ -43,7 +43,7 @@ FORM_BODY: dict[str, str | list[str]] = {
 }
 
 
-def form_items(body: dict[str, str | list[str]]) -> list[tuple[str, str]]:
+def form_items(body: dict[str, str | list[str]]) -> list[tuple[str, str | UploadFile]]:
     return [(k, v) for k, vs in body.items() for v in (vs if isinstance(vs, list) else [vs])]
 
 
@@ -99,6 +99,18 @@ def test_form_errors_are_reported_together() -> None:
     ]
 
 
+def test_a_line_needs_a_description_and_the_invoice_an_issue_date() -> None:
+    body = {**FORM_BODY, "issueDate": "", "description": ["", "", "Code review"], "detail": ["Sprint 14", "", ""]}
+    with pytest.raises(ValidationError) as exc:
+        parse(body)
+    assert exc.value.errors == ["Line 1: description is required", "Issue date is required"]
+
+
+def test_quantities_accept_what_javascript_number_does() -> None:
+    invoice = parse({**FORM_BODY, "quantity": ["0x2", "", "0b11"]})
+    assert [item.quantity for item in invoice.line_items] == [2, 3]
+
+
 def test_an_unknown_client_is_an_error() -> None:
     with pytest.raises(ValidationError) as exc:
         parse({**FORM_BODY, "clientId": "deleted"})
@@ -147,12 +159,12 @@ def test_example_invoice_renders_to_one_a4_page_with_embedded_jetbrains_mono_and
 ) -> None:
     info = inspect_pdf(render_pdf(invoice, business, settings))
     assert info.pages == 1
-    assert info.fonts and all(f.replace("-", "").startswith("JetBrainsMono") for f in info.fonts), (
-        f"fonts: {info.fonts}"
-    )
+    assert info.fonts
+    assert all(f.replace("-", "").startswith("JetBrainsMono") for f in info.fonts), f"fonts: {info.fonts}"
     assert info.images == 0
     width, height = info.size
-    assert abs(width - 595.28) < 1 and abs(height - 841.89) < 1, f"MediaBox {width}×{height}"
+    assert abs(width - 595.28) < 1, f"MediaBox {width}×{height}"
+    assert abs(height - 841.89) < 1, f"MediaBox {width}×{height}"
 
 
 def test_a_25_line_invoice_paginates_beyond_the_first_page(
@@ -246,7 +258,8 @@ def test_the_old_urls_are_gone(client: TestClient, method: str, path: str) -> No
 
 def test_the_module_home_without_its_trailing_slash_redirects_to_it(client: TestClient) -> None:
     res = client.get("/invoicing", follow_redirects=False)
-    assert res.status_code == 307 and res.headers["location"].endswith("/invoicing/")
+    assert res.status_code == 307
+    assert res.headers["location"].endswith("/invoicing/")
 
 
 @pytest.mark.parametrize(

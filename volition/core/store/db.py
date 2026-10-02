@@ -32,7 +32,7 @@ def transaction() -> Iterator[sqlite3.Connection]:
         try:
             yield conn
         except BaseException:
-            if conn.in_transaction:
+            if conn.in_transaction:  # pragma: no branch - false only if SQLite already rolled back itself
                 conn.execute("ROLLBACK")
             raise
         conn.execute("COMMIT")

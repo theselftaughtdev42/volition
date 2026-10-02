@@ -156,7 +156,8 @@ def parse_invoice_form(body: FormBody, find_client: Callable[[str], ClientRecord
 
     if errors:
         raise ValidationError("invoice", errors)
-    assert invoice_number is not None and client is not None
+    if invoice_number is None or client is None:  # pragma: no cover - each adds to `errors` above
+        raise RuntimeError("invoice number or client missing without a validation error")
 
     invoice = {
         "number": format_invoice_number(invoice_number),

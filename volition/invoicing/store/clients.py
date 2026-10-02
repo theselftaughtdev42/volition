@@ -69,10 +69,11 @@ def _write(conn: sqlite3.Connection, client_id: str, details: ClientDetails, *, 
     except sqlite3.IntegrityError as e:
         if "invoicing_clients.name" in str(e):
             raise ValidationError("client", [f"A client named {details.name} already exists"]) from None
-        raise
+        raise  # pragma: no cover - the form validates everything else the schema constrains
     conn.execute("DELETE FROM invoicing_client_line_items WHERE client_id = ?", (client_id,))
     conn.executemany(
-        "INSERT INTO invoicing_client_line_items (client_id, position, description, detail, rate) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO invoicing_client_line_items (client_id, position, description, detail, rate)"
+        " VALUES (?, ?, ?, ?, ?)",
         [(client_id, i, item.description, item.detail, item.rate) for i, item in enumerate(details.line_items)],
     )
     return True

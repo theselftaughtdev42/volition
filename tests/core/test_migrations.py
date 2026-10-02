@@ -2,6 +2,7 @@
 
 import sqlite3
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -28,7 +29,7 @@ def start(modules: Sequence[Module], bootstrap: db.Bootstrap | None = None) -> N
         pass
 
 
-def query(sql: str) -> list[tuple]:
+def query(sql: str) -> list[tuple[Any, ...]]:
     conn = sqlite3.connect(db.db_path())
     try:
         return conn.execute(sql).fetchall()

@@ -16,8 +16,13 @@ dependencies = [
 dev = [
     "fastapi[standard]>=0.141.1",
     "httpx2>=2.13.1",
+    "pre-commit>=4.6.2",
     "pypdf>=6.19.0",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.10",
+    "ty>=0.0.84",
+    "zizmor>=1.30.1",
 ]
 
 [tool.fastapi]
@@ -29,3 +34,35 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
+# Left out on purpose: ANN (ty covers it), D (no docstring policy), TC (FastAPI and Pydantic read
+# annotations at runtime), PL (noisy magic values), EM/TRY (message style), FBT (boolean args),
+# ARG (fixtures and FastAPI dependencies), C90 (complexity, deferred with CRAP: #19).
+select = [
+    "E", "W", "F", "I", "B", "A", "BLE", "UP", "FURB", "PIE", "SIM", "C4", "RET", "PERF", "PTH",
+    "S", "DTZ", "N", "RUF", "PT", "LOG", "G", "T20", "ERA", "ASYNC", "FAST",
+]
+# The invoice formats dates as `1 Sep – 30 Sep 2026` and lines as `quantity × rate`.
+allowed-confusables = ["–", "×"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.ty.src]
+include = ["volition", "tests"]
+
+[tool.ty.rules]
+all = "error"
+# Flags any `Any` returned under a precise annotation, which is how sqlite3.Row values and
+# untyped libraries (WeasyPrint) reach us. Narrowing each one would only add casts.
+unsound-return-statement = "ignore"
+
+[tool.coverage.run]
+branch = true
+source = ["volition"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true

@@ -1,6 +1,7 @@
 import json
 import re
 import uuid
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -60,8 +61,10 @@ def test_updating_replaces_details_and_line_items() -> None:
     created = create_client(ACME)
     changed = ClientDetails(name="Acme Group", address=["2 Road"], line_items=[PresetLineItem(description="Build")])
     updated = update_client(created.id, changed)
-    assert updated is not None and get_client(created.id) == updated
-    assert updated.vat is None and [i.description for i in updated.line_items] == ["Build"]
+    assert updated is not None
+    assert get_client(created.id) == updated
+    assert updated.vat is None
+    assert [i.description for i in updated.line_items] == ["Build"]
 
 
 def test_updating_or_deleting_a_missing_client_says_so() -> None:
@@ -79,9 +82,13 @@ def test_deleting_a_client_cascades_to_its_line_items() -> None:
 
 
 def test_a_failed_transaction_rolls_back() -> None:
-    with pytest.raises(RuntimeError), db.transaction() as conn:
-        conn.execute("INSERT INTO invoicing_clients (id, name, address) VALUES ('x', 'Rolled back', 'a')")
-        raise RuntimeError
+    def insert_then_fail() -> None:
+        with db.transaction() as conn:
+            conn.execute("INSERT INTO invoicing_clients (id, name, address) VALUES ('x', 'Rolled back', 'a')")
+            raise RuntimeError
+
+    with pytest.raises(RuntimeError):
+        insert_then_fail()
     assert list_clients() == []
 
 
@@ -104,7 +111,8 @@ CLIENT_FORM: dict[str, str | list[str]] = {
 
 def test_creating_a_client_from_the_form_redirects_to_the_list(client: TestClient) -> None:
     res = client.post("/invoicing/clients", data=CLIENT_FORM, follow_redirects=False)
-    assert res.status_code == 303 and res.headers["location"] == "/invoicing/clients"
+    assert res.status_code == 303
+    assert res.headers["location"] == "/invoicing/clients"
     [stored] = list_clients()
     assert stored.model_dump(exclude={"id"}) == ACME.model_dump()
     page = client.get("/invoicing/clients").text
@@ -139,7 +147,8 @@ def test_an_invalid_client_form_is_re_rendered_with_its_errors_and_values(client
         "Line 2: description is required",
         "Line 3: rate must be a whole number of 0 or more",
     ]
-    assert 'value="ap@acme.co.uk"' not in res.text and 'value="nope"' in res.text
+    assert 'value="ap@acme.co.uk"' not in res.text
+    assert 'value="nope"' in res.text
     assert list_clients() == []
 
 
@@ -159,7 +168,8 @@ def test_a_duplicate_name_is_reported_on_the_form(client: TestClient) -> None:
 def test_editing_a_client(client: TestClient) -> None:
     stored = create_client(ACME)
     page = client.get(f"/invoicing/clients/{stored.id}").text
-    assert 'value="Acme Ltd"' in page and "1 Road\nTown</textarea>" in page
+    assert 'value="Acme Ltd"' in page
+    assert "1 Road\nTown</textarea>" in page
     assert '<option value="no" selected>No VAT</option>' in page
     assert f'action="/invoicing/clients/{stored.id}/delete"' in page
 
@@ -167,7 +177,18 @@ def test_editing_a_client(client: TestClient) -> None:
         f"/invoicing/clients/{stored.id}", data={**CLIENT_FORM, "name": "Acme Group"}, follow_redirects=False
     )
     assert res.status_code == 303
-    assert get_client(stored.id).name == "Acme Group"  # type: ignore[union-attr]
+    edited = get_client(stored.id)
+    assert edited is not None
+    assert edited.name == "Acme Group"
+
+
+def test_an_invalid_edit_is_re_rendered_and_leaves_the_client_unchanged(client: TestClient) -> None:
+    stored = create_client(ACME)
+    res = client.post(f"/invoicing/clients/{stored.id}", data={**CLIENT_FORM, "name": ""})
+    assert res.status_code == 422
+    assert re.findall(r"<li>(.*?)</li>", res.text) == ["Name is required"]
+    assert f'action="/invoicing/clients/{stored.id}/delete"' in res.text
+    assert get_client(stored.id) == stored
 
 
 def test_deleting_a_client(client: TestClient) -> None:
@@ -193,7 +214,7 @@ def test_new_client_form(client: TestClient) -> None:
 # --- Invoice form dropdown ---
 
 
-def client_data(html: str) -> list[dict]:
+def client_data(html: str) -> list[dict[str, Any]]:
     match = re.search(r'<script type="application/json" id="client-data">(.*?)</script>', html, re.DOTALL)
     assert match
     return json.loads(match.group(1))
@@ -211,8 +232,10 @@ def test_a_lone_client_is_preselected_with_its_defaults(client: TestClient) -> N
     page = client.get("/invoicing/").text
     assert f'<option value="{stored.id}" selected>Acme Ltd</option>' in page
     assert "Choose a client…" not in page
-    assert "<li>Accounts</li>" in page and "<li>ap@acme.co.uk</li>" in page
-    assert 'value="Support"' in page and 'value="90"' in page
+    assert "<li>Accounts</li>" in page
+    assert "<li>ap@acme.co.uk</li>" in page
+    assert 'value="Support"' in page
+    assert 'value="90"' in page
     assert '<option value="hours" selected>Hours</option>' in page
     assert ">PO 123</textarea>" in page
 

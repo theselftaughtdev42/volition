@@ -1,0 +1,49 @@
+# Installed by `make install`. Local hooks only, so every tool runs at the version in uv.lock.
+# pre-commit stashes unstaged changes first, so the hooks check exactly what is being committed.
+# The suite takes about 6 seconds; if it passes 15-20, move the pytest hook to `stages: [pre-push]`.
+repos:
+  - repo: local
+    hooks:
+      # Changes reach main through pull requests. `make release` skips this hook (and only this one) for its
+      # version-bump commit until the release flow goes through a pull request too (#20).
+      - id: no-commit-to-main
+        name: no commits to main
+        entry: sh -c 'if [ "$(git branch --show-current)" = main ]; then echo "commit on a branch and open a pull request"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --force-exclude
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --check --force-exclude
+        language: system
+        types: [python]
+      # The whole project: a change in one file can break the types of another.
+      - id: ty
+        name: ty
+        entry: make typecheck
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: uv-lock
+        name: uv lock --check
+        entry: make lock.check
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
+      - id: pytest
+        name: pytest
+        entry: make test
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: zizmor
+        name: zizmor
+        entry: make zizmor
+        language: system
+        pass_filenames: false
+        files: ^\.github/

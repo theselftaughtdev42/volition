@@ -9,13 +9,42 @@ ENV UV_LINK_MODE=copy \
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
-# --- Runtime: plain Python plus the Pango stack WeasyPrint lays text out with. ---
-FROM python:3.14-slim-bookworm
+# --- Dev build: the same, plus the dev group, in /opt/venv so a mounted source tree can't shadow it. ---
+FROM build AS dev-build
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+RUN uv sync --frozen --no-install-project
+
+# --- Base: plain Python plus the Pango stack WeasyPrint lays text out with. ---
+FROM python:3.14-slim-bookworm AS base
 
 # No font packages: the invoice inlines its own fonts.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
     && rm -rf /var/lib/apt/lists/*
+
+# --- Dev: production's runtime with the dev tools, for `make test.docker` and CI. ---
+# The source is mounted at /app; nothing is written back to it.
+FROM base AS dev
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends make \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/bin/uv /usr/local/bin/uv
+COPY --from=dev-build /opt/venv /opt/venv
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_NO_SYNC=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTEST_ADDOPTS="-p no:cacheprovider" \
+    COVERAGE_FILE=/tmp/.coverage
+
+CMD ["make", "coverage"]
+
+# --- Runtime (the default target, and what ships). ---
+FROM base
 
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv

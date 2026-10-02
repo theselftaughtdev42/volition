@@ -7,11 +7,30 @@ Back office for Mackay Software: one small web app made of a shell plus modules.
 Requires Python 3.14, [uv](https://docs.astral.sh/uv/) and Pango, which [WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation) renders PDFs with (`brew install pango`, or `apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0`).
 
 ```sh
-make install
+make install    # also installs the git hooks
 make start      # http://127.0.0.1:3000, honours HOST and PORT
 ```
 
-Also: `make dev`, `make test`, `make lint`, `make format`.
+Also: `make dev` and `make format`.
+
+## Checks
+
+Each check is a Make target, and the git hooks (`.pre-commit-config.yaml`) and CI (`.github/workflows/ci.yml`) call the same targets, so they can't drift apart. Every tool is a dev dependency locked in `uv.lock`: upgrading one is a lockfile change.
+
+| Target | Checks |
+| --- | --- |
+| `make lint` | ruff lint and format. The rule list is in `pyproject.toml`, with what's left out and why. |
+| `make typecheck` | ty over `volition` and `tests`, every rule an error. A downgraded rule carries a comment saying why. |
+| `make lock.check` | `uv.lock` matches `pyproject.toml`. |
+| `make zizmor` | the GitHub workflows and Dependabot config, for security mistakes. |
+| `make test` | the suite, natively. |
+| `make coverage` | the suite with branch coverage of `volition`, which fails below 100% and lists the missing lines. Any `pragma: no cover` says why. |
+| `make test.docker` | `make coverage` inside the `dev` image: production's runtime and Pango, plus the dev dependencies. |
+| `make check` | lint, typecheck, lock.check, zizmor and coverage: what CI runs. |
+
+The pre-commit hook refuses commits on `main`: work on a branch and open a pull request (`make release` is the one exception, for its version-bump commit). It checks exactly what is staged (unstaged changes are stashed while it runs): ruff on the staged Python files, ty and the suite over the whole project, the lock check when `pyproject.toml` or `uv.lock` changes, and zizmor when anything under `.github/` does. The suite takes about 6 seconds; if it grows past 15–20, move its hook to the pre-push stage.
+
+CI runs on every pull request and push to `main`: a native `static` job (lint, typecheck, lock check, zizmor) and a `test` job that runs `make coverage` in the `dev` image, so the PDFs are rendered with production's Pango. Actions are pinned to commit SHAs and Dependabot raises weekly grouped updates for actions, uv and Docker. Nothing enforces CI on `main` yet (#20).
 
 ## Docker
 

@@ -53,7 +53,9 @@ def test_the_check_catches_crossed_boundaries(tmp_path: Path) -> None:
         "core/app.py": "from volition.core.config import ROOT\nfrom volition.invoicing.models import Invoice",
         "core/templates.py": "from volition import invoicing",
         "core/web.py": "from volition.app import app",
-        "invoicing/models.py": "from volition.core.errors import validate\nfrom ..savings import pots\nimport volition.savings",
+        "invoicing/models.py": (
+            "from volition.core.errors import validate\nfrom ..savings import pots\nimport volition.savings"
+        ),
         "invoicing/web/pages.py": "from ..models import Invoice\nfrom ...core.modules import NavLink",
         "savings/__init__.py": "from volition.savings.pots import Pot",
     }

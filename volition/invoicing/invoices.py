@@ -35,7 +35,9 @@ def format_invoice_number(n: int) -> str:
 
 def parse_invoice_number(number: str) -> int:
     if not (number.startswith("MS-") and number[3:].isascii() and number[3:].isdigit()):
-        raise ValueError(f"Invalid invoice number: {number}")
+        raise ValueError(
+            f"Invalid invoice number: {number}"
+        )  # pragma: no cover - numbers come from format_invoice_number
     return int(number[3:])
 
 

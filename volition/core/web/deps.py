@@ -9,7 +9,7 @@ from volition.core.models import Business
 from volition.core.store.business import load_business
 
 
-class SetupIncomplete(Exception):
+class SetupIncomplete(Exception):  # noqa: N818 - control flow (a redirect), not an error
     """Something the first run asks for hasn't been saved yet; `path` is the page that asks for it.
 
     Raise it from a dependency: the app redirects there.

@@ -41,7 +41,8 @@ def test_module_pages_mark_their_module_and_page(client: TestClient, path: str, 
     page = client.get(path).text
     assert '<a href="/assets/" >Assets</a>' in page
     assert '<nav class="pages" aria-label="Savings">' in page
-    assert '<a href="/savings/things"' in page and '<a href="/assets/things"' not in page
+    assert '<a href="/savings/things"' in page
+    assert '<a href="/assets/things"' not in page
     assert current_links(page) == [("/savings/", "true"), (page_link, "page")]
 
 
@@ -98,7 +99,8 @@ def test_cross_origin_posts_to_modules_are_rejected(client: TestClient, headers:
 )
 def test_same_origin_and_non_browser_posts_are_allowed(client: TestClient, headers: dict[str, str]) -> None:
     res = client.post("/savings/things", headers=headers)
-    assert res.status_code == 200 and res.json() == {"count": 1}
+    assert res.status_code == 200
+    assert res.json() == {"count": 1}
 
 
 def test_cross_origin_gets_are_allowed(client: TestClient) -> None:

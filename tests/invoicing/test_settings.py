@@ -38,7 +38,9 @@ def test_settings_round_trip_and_are_none_until_saved() -> None:
     save_settings(SETTINGS)
     assert load_settings() == SETTINGS
     save_settings(SETTINGS.model_copy(update={"notes": "later", "payment_terms_days": 7}))
-    assert (load_settings().notes, load_settings().payment_terms_days) == ("later", 7)  # type: ignore[union-attr]
+    settings = load_settings()
+    assert settings is not None
+    assert (settings.notes, settings.payment_terms_days) == ("later", 7)
 
 
 @pytest.mark.parametrize(
@@ -46,18 +48,22 @@ def test_settings_round_trip_and_are_none_until_saved() -> None:
 )
 def test_pages_redirect_to_the_settings_form_on_the_first_run(first_run: TestClient, path: str) -> None:
     res = first_run.get(path, follow_redirects=False)
-    assert res.status_code == 303 and res.headers["location"] == "/invoicing/settings"
+    assert res.status_code == 303
+    assert res.headers["location"] == "/invoicing/settings"
 
 
 @pytest.mark.parametrize("path", ["/invoicing/invoice", "/invoicing/clients"])
 def test_posts_redirect_to_the_settings_form_on_the_first_run(first_run: TestClient, path: str) -> None:
     res = first_run.post(path, data={"name": "x"}, follow_redirects=False)
-    assert res.status_code == 303 and res.headers["location"] == "/invoicing/settings"
+    assert res.status_code == 303
+    assert res.headers["location"] == "/invoicing/settings"
 
 
 def test_the_first_run_form_suggests_starting_values(first_run: TestClient) -> None:
     page = first_run.get("/invoicing/settings").text
-    assert "Before the first invoice" in page and "Save and continue" in page and "Cancel" not in page
+    assert "Before the first invoice" in page
+    assert "Save and continue" in page
+    assert "Cancel" not in page
     assert 'name="invoiceNumberStart" type="number" min="1" step="1" required value="1"' in page
     assert '<option value="days" selected>Days</option>' in page
     assert 'name="vat" type="checkbox" checked' in page
@@ -66,7 +72,8 @@ def test_the_first_run_form_suggests_starting_values(first_run: TestClient) -> N
 
 def test_saving_the_settings_continues_to_the_invoice_form(first_run: TestClient) -> None:
     res = first_run.post("/invoicing/settings", data=SETTINGS_FORM, follow_redirects=False)
-    assert res.status_code == 303 and res.headers["location"] == "/invoicing/"
+    assert res.status_code == 303
+    assert res.headers["location"] == "/invoicing/"
     assert load_settings() == InvoicingSettings(
         invoice_number_start=12,
         vat=False,  # unticked, so absent from the submission
@@ -110,6 +117,13 @@ def test_an_invalid_settings_form_is_re_rendered_with_its_errors_and_values(firs
     assert load_settings() is None
 
 
+def test_an_account_number_needs_8_digits(first_run: TestClient) -> None:
+    res = first_run.post("/invoicing/settings", data={**SETTINGS_FORM, "accountNumber": "1234 567"})
+    assert res.status_code == 422
+    assert re.findall(r"<li>(.*?)</li>", res.text) == ["Account number must be 8 digits"]
+    assert load_settings() is None
+
+
 def test_schema_errors_on_the_settings_form_are_reported(first_run: TestClient) -> None:
     res = first_run.post("/invoicing/settings", data={**SETTINGS_FORM, "unit": "weeks"})
     assert res.status_code == 422
@@ -118,10 +132,14 @@ def test_schema_errors_on_the_settings_form_are_reported(first_run: TestClient) 
 
 def test_editing_the_saved_settings(client: TestClient) -> None:
     page = client.get("/invoicing/settings").text
-    assert "Before the first invoice" not in page and '<a href="/invoicing/">Cancel</a>' in page
+    assert "Before the first invoice" not in page
+    assert '<a href="/invoicing/">Cancel</a>' in page
     assert 'value="IT &amp; Software Consultancy Services"' in page
-    assert f'value="{SETTINGS.bank.sort_code}"' in page and 'value="Monzo"' in page
+    assert f'value="{SETTINGS.bank.sort_code}"' in page
+    assert 'value="Monzo"' in page
     res = client.post("/invoicing/settings", data={**SETTINGS_FORM, "vat": "on"}, follow_redirects=False)
     assert res.status_code == 303
-    assert load_settings().vat is True  # type: ignore[union-attr]
-    assert load_settings().bank.account_number == "12345678"  # type: ignore[union-attr]
+    settings = load_settings()
+    assert settings is not None
+    assert settings.vat is True
+    assert settings.bank.account_number == "12345678"

@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Let a release age a week before adopting it, so a compromised one is likely pulled first.
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    # Let a release age a week before adopting it, so a compromised one is likely pulled first.
+    cooldown:
+      default-days: 7
+    groups:
+      uv:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    # Let a release age a week before adopting it, so a compromised one is likely pulled first.
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
+        patterns: ["*"]

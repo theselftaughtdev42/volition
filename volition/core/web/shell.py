@@ -54,7 +54,7 @@ def shell_for(modules: Sequence[Module], path: str, business: Business | None) -
         ),
         module=current,
         pages=pages,
-        legal_name=business and business.legal_name,
+        legal_name=business.legal_name if business else None,
     )
 
 

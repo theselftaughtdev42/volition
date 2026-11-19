@@ -17,7 +17,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 RUN uv sync --frozen --no-install-project
 
 # --- Base: plain Python plus the Pango stack WeasyPrint lays text out with. ---
-FROM python:3.14-slim-bookworm@sha256:3fe1a0b6c2d6b2ebb572906cdabeca75aeb558c0c17db5ffefbcf8094871c32b AS base
+FROM python:3.15-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9 AS base
 
 # No font packages: the invoice inlines its own fonts.
 RUN apt-get update \

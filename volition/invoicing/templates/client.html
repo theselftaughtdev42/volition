@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ values.name if client_id else "New client" }} · Volition{% endblock %}
+{% block heading %}{{ values.name if client_id else "New client" }}{% endblock %}
 {% block content %}
   <form id="client" method="post" action="{{ '/invoicing/clients/' ~ client_id if client_id else '/invoicing/clients' }}">
     <fieldset>
-      <legend>{{ "Client" if client_id else "New client" }}</legend>
+      <legend>Details</legend>
       <div class="grid">
         <label><span class="label">Name</span>
           <input name="name" required value="{{ values.name }}">

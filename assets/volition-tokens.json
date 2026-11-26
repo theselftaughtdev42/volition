@@ -1,0 +1,36 @@
+{
+ "name": "Volition",
+ "version": 1,
+ "note": "The app's own look (Workbench). Invoices are the business's documents and keep design-tokens.json (Mackay Software). volition.css is written from this file by hand: change both together.",
+ "color": {
+  "themes": [{"id": "light", "name": "Light"}, {"id": "dark", "name": "Dark"}],
+  "tokens": [
+   {"name": "canvas", "value": {"light": "#F3F2EF", "dark": "#161614"}, "usage": "Page background behind panels."},
+   {"name": "surface", "value": {"light": "#FFFFFF", "dark": "#1F1E1C"}, "usage": "Panels, inputs' container, the current sidebar link."},
+   {"name": "sidebar", "value": {"light": "#E9E7E2", "dark": "#1B1A18"}, "usage": "The sidebar."},
+   {"name": "line", "value": {"light": "#DAD7D0", "dark": "#33312D"}, "usage": "Panel and input borders, table rules."},
+   {"name": "ink", "value": {"light": "#1C1B19", "dark": "#EDEBE6"}, "usage": "Primary text."},
+   {"name": "ink-muted", "value": {"light": "#66635C", "dark": "#9E9A91"}, "usage": "Labels, hints, secondary text."},
+   {"name": "accent", "value": {"light": "#2F48C9", "dark": "#91A2FF"}, "usage": "Primary buttons, focus rings, links, the mark."},
+   {"name": "accent-soft", "value": {"light": "#E6E9FA", "dark": "#232A52"}, "usage": "Tinted background behind accent text."},
+   {"name": "on-accent", "value": {"light": "#FFFFFF", "dark": "#10132A"}, "usage": "Text on an accent fill."},
+   {"name": "danger", "value": {"light": "#A6361A", "dark": "#F0A27C"}, "usage": "Errors and destructive actions."},
+   {"name": "danger-soft", "value": {"light": "#F6E4D8", "dark": "#3A2014"}, "usage": "Error panel background."}
+  ]
+ },
+ "type": {
+  "families": {
+   "sans": "\"Schibsted Grotesk\", system-ui, sans-serif",
+   "mono": "\"JetBrains Mono\", ui-monospace, \"SF Mono\", Menlo, monospace"
+  },
+  "styles": [
+   {"name": "page-title", "family": "sans", "fontSize": "26px", "lineHeight": "32px", "fontWeight": 700, "letterSpacing": "-0.02em"},
+   {"name": "heading", "family": "sans", "fontSize": "16px", "lineHeight": "24px", "fontWeight": 600},
+   {"name": "body", "family": "sans", "fontSize": "15px", "lineHeight": "22px", "fontWeight": 400},
+   {"name": "label", "family": "sans", "fontSize": "12px", "lineHeight": "16px", "fontWeight": 500, "usage": "Field labels and table headers, in ink-muted."},
+   {"name": "figure", "family": "mono", "fontSize": "14px", "lineHeight": "20px", "fontWeight": 400, "usage": "Numbers, amounts, invoice numbers: tabular."}
+  ]
+ },
+ "spacing": {"space-1": "4px", "space-2": "8px", "space-3": "12px", "space-4": "16px", "space-6": "24px", "space-8": "32px"},
+ "radius": {"radius-sm": "6px (inputs, sidebar links)", "radius-md": "8px (buttons)", "radius-lg": "12px (panels, cards)", "radius-pill": "999px (badges)"}
+}

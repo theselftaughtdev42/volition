@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Clients · Volition{% endblock %}
+{% block heading %}Clients{% endblock %}
 {% block content %}
   <fieldset>
-    <legend>Clients</legend>
+    <legend>All clients</legend>
     {% if clients %}
     <table>
       <thead>
@@ -22,6 +23,6 @@
     {% endif %}
   </fieldset>
   <div class="actions">
-    <a class="button" href="/invoicing/clients/new">+ New client</a>
+    <a class="button primary" href="/invoicing/clients/new">+ New client</a>
   </div>
 {% endblock %}

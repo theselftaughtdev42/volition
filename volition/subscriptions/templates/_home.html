@@ -9,7 +9,7 @@
       <li>
         <span class="when">{{ r.on.day }} {{ r.on.strftime("%b") }}</span>
         <a class="what" href="/subscriptions/{{ r.subscription.id }}">{{ r.subscription.name }}</a>
-        {% if r.subscription.auto_renews %}<span class="hint">Auto-renews</span>{% else %}<span class="badge warn">Renew by hand</span>{% endif %}
+        {% if r.subscription.auto_renews %}<span class="hint">Auto-renews</span>{% elif r.overdue %}<span class="badge warn">Overdue</span>{% else %}<span class="badge warn">Renew by hand</span>{% endif %}
         <span class="amount">{{ r.subscription.gbp | money }}</span>
       </li>
       {% endfor %}

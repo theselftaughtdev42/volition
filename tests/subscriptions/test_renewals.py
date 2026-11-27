@@ -66,6 +66,22 @@ def test_the_overview_orders_renewals_and_totals_in_gbp() -> None:
     assert result.per_month == round(result.per_year / 12)
 
 
+def test_a_missed_renewal_by_hand_stays_overdue_and_an_automatic_one_rolls_on() -> None:
+    today = date(2026, 11, 27)
+    missed = date(2026, 11, 20)
+    result = overview([sub("manual", "yearly", missed, 850, autoRenews=False), sub("auto", "yearly", missed, 1)], today)
+    manual, auto = result.renewals
+    assert (manual.subscription.name, manual.on, manual.days, manual.overdue, manual.soon) == (
+        "manual",
+        missed,
+        -7,
+        True,
+        True,
+    )
+    assert (auto.on, auto.overdue, auto.soon) == (date(2027, 11, 20), False, False)
+    assert result.per_year == 851
+
+
 def test_thirty_days_out_is_soon_and_thirty_one_is_not() -> None:
     today = date(2026, 11, 27)
     result = overview([sub("a", "yearly", date(2026, 12, 27), 1), sub("b", "yearly", date(2026, 12, 28), 1)], today)

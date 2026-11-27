@@ -35,14 +35,17 @@ def test_money_and_dates_format_for_people() -> None:
     assert day_month_year(date(2027, 1, 8)) == "8 Jan 2027"
 
 
-@pytest.mark.parametrize(("text", "pence"), [("12", 1200), ("12.5", 1250), ("12.05", 1205), ("1,234.50", 123450)])
+@pytest.mark.parametrize(
+    ("text", "pence"),
+    [("12", 1200), ("12.5", 1250), ("12.05", 1205), ("1,234.50", 123450), ("999,999,999.99", 99_999_999_999)],
+)
 def test_amounts_parse_to_pence(text: str, pence: int) -> None:
     found: list[str] = []
     assert parse_amount(text, "Cost", found) == pence
     assert found == []
 
 
-@pytest.mark.parametrize("text", ["", "abc", "-1", "1.234", "1e3"])
+@pytest.mark.parametrize("text", ["", "abc", "-1", "1.234", "1e3", "1000000000", "9" * 5000])
 def test_other_amounts_are_errors(text: str) -> None:
     found: list[str] = []
     assert parse_amount(text, "Cost", found) is None
@@ -90,6 +93,18 @@ def test_renewals_today_and_tomorrow_say_so(client: TestClient) -> None:
     assert "Auto-renews in 1 day<" in page
     assert "Renew by hand within 1 day<" in page
     assert "<h2>Later</h2>" not in page
+
+
+def test_a_missed_renewal_by_hand_stays_overdue(client: TestClient) -> None:
+    create_subscription(DOMAIN.model_copy(update={"renews_on": date(2026, 11, 20)}))
+    create_subscription(DOMAIN.model_copy(update={"name": "Yesterday", "renews_on": date(2026, 11, 26)}))
+    create_subscription(CLAUDE.model_copy(update={"renews_on": date(2026, 11, 20)}))
+    page = client.get("/subscriptions/").text
+    assert "Renewal by hand overdue by 7 days" in page
+    assert "Renewal by hand overdue by 1 day<" in page
+    assert "Auto-renews in 23 days" in page
+    assert "<h2>Later</h2>" not in page
+    assert '<span class="badge warn">Overdue</span>' in client.get("/").text
 
 
 def test_with_nothing_due_soon_the_timeline_says_so(client: TestClient) -> None:
@@ -173,6 +188,12 @@ def test_an_invalid_form_is_re_rendered_with_its_errors_and_values(client: TestC
     assert 'value="soon"' in res.text
     assert 'value="yes" checked' not in res.text
     assert list_subscriptions() == []
+
+
+def test_an_amount_too_large_is_a_form_error_not_a_crash(client: TestClient) -> None:
+    res = client.post("/subscriptions/", data={**FORM, "costGbp": "99999999999999999999"})
+    assert res.status_code == 422
+    assert errors(res.text) == ["Cost in GBP must be an amount such as 12.50"]
 
 
 def test_schema_errors_on_the_form_are_reported(client: TestClient) -> None:

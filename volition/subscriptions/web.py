@@ -146,7 +146,8 @@ def submitted_values(body: FormBody) -> dict[str, Any]:
     return {**{key: field(body, key) for key in _TEXT_FIELDS}, "autoRenews": bool(field(body, "autoRenews"))}
 
 
-_AMOUNT = re.compile(r"([0-9]+)(?:\.([0-9]{1,2}))?", re.ASCII)
+# At most 9 digits of pounds, so the pence fit MAX_PENCE.
+_AMOUNT = re.compile(r"([0-9]{1,9})(?:\.([0-9]{1,2}))?", re.ASCII)
 
 
 def parse_amount(text: str, label: str, errors: list[str]) -> int | None:

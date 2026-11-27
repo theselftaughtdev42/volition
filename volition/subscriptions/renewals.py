@@ -40,17 +40,22 @@ def next_renewal(renews_on: date, cycle: Cycle, on: date) -> date:
 class Renewal:
     subscription: SubscriptionRecord
     on: date
-    #: Days from today, 0 for today.
+    #: Days from today, 0 for today; negative once a renewal by hand is overdue.
     days: int
 
     @property
     def soon(self) -> bool:
+        """Due within SOON, or overdue."""
         return self.days <= SOON.days
+
+    @property
+    def overdue(self) -> bool:
+        return self.days < 0
 
 
 @dataclass(frozen=True)
 class Overview:
-    #: Every subscription's next renewal, soonest first.
+    #: Every subscription's next renewal, soonest (or most overdue) first.
     renewals: tuple[Renewal, ...]
     #: In GBP pence: the yearly cost of everything, and that spread over 12 months.
     per_year: int
@@ -73,7 +78,8 @@ class Overview:
 def overview(subscriptions: Sequence[SubscriptionRecord], on: date) -> Overview:
     renewals = []
     for s in subscriptions:
-        when = next_renewal(s.renews_on, s.cycle, on)
+        # One renewed by hand doesn't renew until someone does it, so a missed renewal stays on its date, overdue.
+        when = next_renewal(s.renews_on, s.cycle, on) if s.auto_renews else s.renews_on
         renewals.append(Renewal(s, when, (when - on).days))
     renewals.sort(key=lambda r: (r.on, r.subscription.name.casefold()))
     per_year = sum(s.gbp * (12 if s.cycle == "monthly" else 1) for s in subscriptions)

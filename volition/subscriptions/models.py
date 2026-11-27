@@ -14,7 +14,10 @@ from volition.core.models import Model
 Cycle = Literal["monthly", "yearly"]
 Currency = Literal["GBP", "USD", "EUR"]
 
-Pence = Annotated[int, Field(ge=0)]
+#: The most an amount can be (just under £1bn), so totals stay well inside SQLite's 64-bit INTEGER.
+MAX_PENCE = 99_999_999_999
+
+Pence = Annotated[int, Field(ge=0, le=MAX_PENCE)]
 
 
 class SubscriptionDetails(Model):
@@ -23,7 +26,8 @@ class SubscriptionDetails(Model):
     name: Annotated[str, Field(min_length=1)]
     vendor: str | None = None
     cycle: Cycle
-    #: The next renewal as entered. Once it passes, renewals roll on by the cycle (see renewals.next_renewal).
+    #: The next renewal as entered. Once it passes, an auto-renewing one rolls on by the cycle (see
+    #: renewals.next_renewal); one renewed by hand stays put, overdue, until it is edited.
     renews_on: date
     currency: Currency
     #: Per cycle, in `currency`.

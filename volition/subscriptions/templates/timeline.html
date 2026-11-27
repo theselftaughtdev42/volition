@@ -17,6 +17,8 @@
           <span class="hint">{{ [r.subscription.vendor, r.subscription.cycle | capitalize, r.subscription.paid_with] | select | join(" · ") }}</span>
           {% if r.subscription.auto_renews %}
           <span class="hint">Auto-renews {{ "today" if r.days == 0 else "in " ~ r.days ~ (" day" if r.days == 1 else " days") }}</span>
+          {% elif r.overdue %}
+          <span class="due">Renewal by hand overdue by {{ -r.days }} {{ "day" if r.days == -1 else "days" }}</span>
           {% else %}
           <span class="due">Renew by hand {{ "today" if r.days == 0 else "within " ~ r.days ~ (" day" if r.days == 1 else " days") }}</span>
           {% endif %}

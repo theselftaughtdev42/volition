@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block heading %}Home{% endblock %}
 {% block content %}
+{% for panel in panels %}
+{{ panel }}
+{% endfor %}
   <div class="cards">
     {% for card in cards %}
     <a class="card" href="{{ card.href }}">

@@ -1,5 +1,6 @@
 """The module contract: what a module gives the shell to be part of the app."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,3 +30,6 @@ class Module:
     migrations: tuple[str, ...]
     #: The module's template directory, loaded as "<slug>/...".
     templates: Path
+    #: Renders the module's panel for the home page, above the cards: HTML, or "" for none (e.g. nothing to show yet).
+    #: Called on every visit to the home page.
+    home_panel: Callable[[], str] | None = None

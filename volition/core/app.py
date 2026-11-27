@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from markupsafe import Markup
 
 from volition.core.config import ROOT, allowed_hosts, timezone
 from volition.core.errors import ValidationError
@@ -53,8 +54,10 @@ def create_app(modules: Sequence[Module], bootstrap: db.Bootstrap | None = None)
 
     @app.get("/", response_class=HTMLResponse, dependencies=needs_business)
     def home(shell: ShellDep) -> HTMLResponse:
+        # Each module renders its own panel, already escaped, so it goes in as markup.
+        panels = [Markup(html) for m in modules if m.home_panel and (html := m.home_panel())]  # noqa: S704
         cards = [{"title": m.title, "description": m.description, "href": module_href(m)} for m in modules]
-        return HTMLResponse(templates.get_template("home.html").render(shell=shell, cards=cards))
+        return HTMLResponse(templates.get_template("home.html").render(shell=shell, panels=panels, cards=cards))
 
     @app.get("/health")
     def health() -> dict[str, str]:

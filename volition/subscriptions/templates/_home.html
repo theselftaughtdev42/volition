@@ -1,0 +1,19 @@
+<section class="subscriptions-home" aria-label="Subscriptions">
+{% set home = true %}
+{% include "subscriptions/_totals.html" %}
+  {% if overview.soon %}
+  <fieldset>
+    <legend>Renewing in the next 30 days</legend>
+    <ul class="rows">
+      {% for r in overview.soon %}
+      <li>
+        <span class="when">{{ r.on.day }} {{ r.on.strftime("%b") }}</span>
+        <a class="what" href="/subscriptions/{{ r.subscription.id }}">{{ r.subscription.name }}</a>
+        {% if r.subscription.auto_renews %}<span class="hint">Auto-renews</span>{% else %}<span class="badge warn">Renew by hand</span>{% endif %}
+        <span class="amount">{{ r.subscription.gbp | money }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </fieldset>
+  {% endif %}
+</section>

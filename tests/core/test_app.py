@@ -21,6 +21,27 @@ def test_the_home_page_has_a_card_per_module(client: TestClient) -> None:
     ]
 
 
+def test_modules_put_their_panels_on_the_home_page_above_the_cards(isolated_dirs: object) -> None:
+    from fastapi.testclient import TestClient as Client
+
+    from tests.conftest import BUSINESS
+    from tests.core.conftest import fake_module
+    from volition.core.app import create_app
+    from volition.core.store.business import save_business
+
+    modules = [
+        fake_module("assets", "Assets", home_panel=lambda: '<p id="panel">Assets <b>now</b></p>'),
+        fake_module("savings", "Savings", home_panel=lambda: ""),
+        fake_module("pots", "Pots"),
+    ]
+    with Client(create_app(modules), base_url="http://localhost") as c:
+        save_business(BUSINESS)
+        page = c.get("/").text
+    # As given, not escaped again; an empty panel adds nothing.
+    assert re.findall(r"<p id=\"panel\">.*?</p>", page) == ['<p id="panel">Assets <b>now</b></p>']
+    assert page.index('id="panel"') < page.index('<a class="card"')
+
+
 def test_the_home_page_has_the_top_nav_with_nothing_marked(client: TestClient) -> None:
     page = client.get("/").text
     nav = re.findall(r'<a href="([^"]+)" >([^<]+)</a>', page)

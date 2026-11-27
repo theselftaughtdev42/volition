@@ -1,6 +1,6 @@
 """The shell's test app: fake modules, with no invoicing."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -18,7 +18,9 @@ from volition.core.web.shell import ShellDep
 TEMPLATES = Path(__file__).resolve().parent / "fake_templates"
 
 
-def fake_module(slug: str, title: str, migrations: tuple[str, ...] = ()) -> Module:
+def fake_module(
+    slug: str, title: str, migrations: tuple[str, ...] = (), home_panel: Callable[[], str] | None = None
+) -> Module:
     """A module with a home page, a list of things (one of them broken) and a form that adds to it."""
     templates = environment({slug: TEMPLATES})
     router = APIRouter()
@@ -56,6 +58,7 @@ def fake_module(slug: str, title: str, migrations: tuple[str, ...] = ()) -> Modu
         nav=(NavLink("Home", "/"), NavLink("Things", "/things")),
         migrations=migrations,
         templates=TEMPLATES,
+        home_panel=home_panel,
     )
 
 

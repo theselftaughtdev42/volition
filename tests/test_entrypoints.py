@@ -8,14 +8,15 @@ from fastapi.testclient import TestClient
 from volition import __main__
 
 
-def test_the_composed_app_serves_invoicing() -> None:
+def test_the_composed_app_serves_every_module() -> None:
     from volition.app import app
 
     with TestClient(app, base_url="http://localhost") as c:
         assert c.get("/health").status_code == 200
-        res = c.get("/invoicing/", follow_redirects=False)
-    assert res.status_code == 303
-    assert res.headers["location"] == "/business"
+        for path in ("/invoicing/", "/subscriptions/"):
+            res = c.get(path, follow_redirects=False)
+            assert res.status_code == 303
+            assert res.headers["location"] == "/business"
 
 
 @pytest.mark.parametrize(

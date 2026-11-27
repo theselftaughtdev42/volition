@@ -1,6 +1,6 @@
 # volition
 
-Back office for Mackay Software: one small web app made of a shell plus modules. Invoicing is the first module; it produces branded A4 PDF invoices for clients chosen from a list.
+Back office for Mackay Software: one small web app made of a shell plus modules. Invoicing produces branded A4 PDF invoices for clients chosen from a list; Subscriptions tracks what the business pays for on a cycle, its monthly and yearly cost in GBP, and what renews in the next 30 days.
 
 ## Setup
 

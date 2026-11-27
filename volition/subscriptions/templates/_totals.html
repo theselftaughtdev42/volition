@@ -1,0 +1,5 @@
+<div class="tiles">
+  <div class="tile"><span class="label">{{ "Subscriptions per month" if home else "Per month" }}</span><span class="figure">{{ overview.per_month | money }}</span></div>
+  <div class="tile"><span class="label">{{ "Subscriptions per year" if home else "Per year" }}</span><span class="figure">{{ overview.per_year | money }}</span></div>
+  <div class="tile soon"><span class="label">Renewing in 30 days</span><span class="figure">{{ overview.soon | length }} · {{ overview.soon_total | money }}</span></div>
+</div>
